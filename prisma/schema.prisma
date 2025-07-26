@@ -1,0 +1,205 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Trade model for storing stock trade information
+model Trade {
+  id          Int       @id @default(autoincrement())
+  ticker      String    // Stock ticker symbol (e.g., AAPL, MSFT)
+  entryDate   DateTime  // Date when the trade was entered
+  entryPrice  Float     // Price per share at entry
+  exitDate    DateTime? // Date when the trade was exited (null for open positions)
+  exitPrice   Float?    // Price per share at exit (null for open positions)
+  quantity    Float     // Number of shares (supports fractional shares)
+  fees        Float?    // Trading fees (optional)
+  notes       String?   // Additional notes about the trade (optional)
+  tags        String?   // Comma-separated tags for categorization (optional)
+  isShort     Boolean   @default(false) // Whether this is a short position
+  
+  // AI-Enhanced Fields
+  confidenceScore   Float?   // AI confidence in trade decision (0-1)
+  patternMatched    String?  // Identified pattern type
+  aiRecommendation  String?  // AI suggestion for the trade
+  emotionalState    String?  // Trader's emotional state during trade
+  marketConditions  String?  // JSON string of market conditions at trade time
+  
+  // Metadata
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relationship with Performance
+  performance     Performance? @relation(fields: [performanceId], references: [id])
+  performanceId   Int?
+  
+  // AI Relationships
+  insights        TradeInsight[]
+  predictions     TradePrediction[]
+  patterns        TradePattern[] @relation("TradePatterns")
+  
+  // Indexes for improved query performance
+  @@index([ticker])
+  @@index([entryDate])
+  @@index([exitDate])
+  @@index([patternMatched])
+  @@index([confidenceScore])
+  
+  // Validation rules (to be implemented in application code):
+  // - ticker: must be a valid stock symbol (uppercase, 1-5 characters)
+  // - entryPrice: must be greater than 0
+  // - exitPrice: must be greater than 0 when provided
+  // - quantity: must be greater than 0
+  // - exitDate: must be after entryDate when provided
+  // - confidenceScore: must be between 0 and 1 when provided
+}
+
+// Performance model for storing aggregated performance metrics
+model Performance {
+  id              Int       @id @default(autoincrement())
+  period          String    // "weekly", "monthly", or "yearly"
+  startDate       DateTime  // Start date of the period
+  endDate         DateTime  // End date of the period
+  totalTrades     Int       // Total number of trades closed in this period
+  winningTrades   Int       // Number of profitable trades
+  losingTrades    Int       // Number of unprofitable trades
+  profitLoss      Float     // Total profit/loss for the period
+  profitLossPercentage Float // Percentage profit/loss for the period
+  largestWin      Float     // Largest winning trade amount
+  largestLoss     Float     // Largest losing trade amount
+  averageWin      Float     // Average winning trade amount
+  averageLoss     Float     // Average losing trade amount
+  winRate         Float     // Win rate as a percentage (winningTrades / totalTrades * 100)
+  spReturn        Float     // S&P 500 return for the same period (percentage)
+  outperformance  Float     // Outperformance vs S&P 500 (profitLossPercentage - spReturn)
+  
+  // Metadata
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relationships
+  trades          Trade[]   // Trades included in this performance period
+  
+  // Indexes for improved query performance
+  @@index([period])
+  @@index([startDate, endDate])
+  @@unique([period, startDate, endDate]) // Ensure no duplicate periods
+  
+  // Validation rules (to be implemented in application code):
+  // - period: must be one of "weekly", "monthly", or "yearly"
+  // - endDate: must be after startDate
+  // - totalTrades: must equal winningTrades + losingTrades
+  // - winRate: must equal (winningTrades / totalTrades * 100)
+}
+
+// Trade Pattern Analysis - Stores identified trading patterns
+model TradePattern {
+  id              Int       @id @default(autoincrement())
+  patternType     String    // "trend_following", "mean_reversion", "breakout", "volume"
+  patternName     String    // Human-readable pattern name
+  confidenceScore Float     // Pattern confidence score (0-1)
+  tradeIds        String    // JSON array of trade IDs that match this pattern
+  description     String?   // Pattern description
+  performance     String?   // JSON string with pattern performance metrics
+  
+  // Metadata
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relationships
+  trades          Trade[]   @relation("TradePatterns")
+  
+  // Indexes
+  @@index([patternType])
+  @@index([confidenceScore])
+  @@index([createdAt])
+  
+  // Validation rules:
+  // - patternType: must be one of the defined pattern types
+  // - confidenceScore: must be between 0 and 1
+  // - tradeIds: must be valid JSON array
+}
+
+// AI Insights - Stores AI-generated insights for trades
+model TradeInsight {
+  id              Int       @id @default(autoincrement())
+  tradeId         Int       // Reference to the trade
+  insightType     String    // "performance", "risk", "pattern", "behavioral"
+  insightText     String    // The actual insight text
+  confidenceScore Float     // AI confidence in this insight (0-1)
+  
+  // Metadata
+  createdAt       DateTime  @default(now())
+  
+  // Relationships
+  trade           Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tradeId])
+  @@index([insightType])
+  @@index([confidenceScore])
+  @@index([createdAt])
+  
+  // Validation rules:
+  // - insightType: must be one of the defined insight types
+  // - confidenceScore: must be between 0 and 1
+}
+
+// ML Model Metadata - Stores information about trained ML models
+model MLModel {
+  id              Int       @id @default(autoincrement())
+  modelName       String    // Name of the model
+  modelVersion    String    // Version string
+  modelType       String    // "pattern_classification", "prediction", "clustering"
+  accuracyScore   Float?    // Model accuracy score (0-1)
+  lastTrained     DateTime? // When the model was last trained
+  isActive        Boolean   @default(true) // Whether this model is currently active
+  modelPath       String?   // Path to the model file
+  parameters      String?   // JSON string of model parameters
+  
+  // Metadata
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Indexes
+  @@index([modelName])
+  @@index([modelType])
+  @@index([isActive])
+  @@unique([modelName, modelVersion]) // Ensure unique model versions
+  
+  // Validation rules:
+  // - modelType: must be one of the defined model types
+  // - accuracyScore: must be between 0 and 1 when provided
+}
+
+// Trade Predictions - Stores AI predictions for trades
+model TradePrediction {
+  id              Int       @id @default(autoincrement())
+  tradeId         Int       // Reference to the trade
+  predictionType  String    // "entry", "exit", "price", "risk"
+  predictedValue  Float     // The predicted value
+  actualValue     Float?    // The actual value (for validation)
+  confidenceScore Float     // AI confidence in this prediction (0-1)
+  
+  // Metadata
+  createdAt       DateTime  @default(now())
+  
+  // Relationships
+  trade           Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tradeId])
+  @@index([predictionType])
+  @@index([confidenceScore])
+  @@index([createdAt])
+  
+  // Validation rules:
+  // - predictionType: must be one of the defined prediction types
+  // - confidenceScore: must be between 0 and 1
+} 

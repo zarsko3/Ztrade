@@ -1,0 +1,226 @@
+import { marketDataOptimizer, OptimizedMarketData } from './market-data-optimizer';
+
+export interface UnifiedMarketData {
+  symbol: string;
+  price: number;
+  change: number;
+  changePercent: number;
+  volume: number;
+  timestamp: string;
+  lastUpdated: string;
+  dataQuality: 'live' | 'cached' | 'mock';
+  source: 'yahoo' | 'cache' | 'fallback';
+}
+
+class UnifiedMarketDataManager {
+  private static instance: UnifiedMarketDataManager;
+  private isInitialized = false;
+  private updateInterval: NodeJS.Timeout | null = null;
+  private subscribers: Set<(data: UnifiedMarketData[]) => void> = new Set();
+  private currentData: Map<string, UnifiedMarketData> = new Map();
+  private defaultSymbols = ['^GSPC', 'AAPL', 'GOOGL', 'MSFT', 'TSLA'];
+  private isUpdating = false;
+
+  static getInstance(): UnifiedMarketDataManager {
+    if (!UnifiedMarketDataManager.instance) {
+      UnifiedMarketDataManager.instance = new UnifiedMarketDataManager();
+    }
+    return UnifiedMarketDataManager.instance;
+  }
+
+  /**
+   * Initialize the unified data manager
+   */
+  async initialize(symbols: string[] = []): Promise<void> {
+    if (this.isInitialized) {
+      return;
+    }
+
+    const symbolsToTrack = symbols.length > 0 ? symbols : this.defaultSymbols;
+    console.log('Initializing Unified Market Data Manager with symbols:', symbolsToTrack);
+
+    // Initial data fetch
+    await this.updateMarketData(symbolsToTrack);
+
+    // Set up unified update interval (90 seconds)
+    this.updateInterval = setInterval(async () => {
+      await this.updateMarketData(symbolsToTrack);
+    }, 90000); // 90 seconds - Yahoo Finance recommended refresh rate
+
+    this.isInitialized = true;
+    console.log('Unified Market Data Manager initialized');
+  }
+
+  /**
+   * Subscribe to market data updates
+   */
+  subscribe(callback: (data: UnifiedMarketData[]) => void): () => void {
+    this.subscribers.add(callback);
+    
+    // Immediately send current data to new subscriber
+    const currentDataArray = Array.from(this.currentData.values());
+    if (currentDataArray.length > 0) {
+      callback(currentDataArray);
+    }
+
+    // Return unsubscribe function
+    return () => {
+      this.subscribers.delete(callback);
+    };
+  }
+
+  /**
+   * Update market data for all tracked symbols
+   */
+  private async updateMarketData(symbols: string[]): Promise<void> {
+    if (this.isUpdating) {
+      console.log('Market data update already in progress, skipping...');
+      return;
+    }
+
+    this.isUpdating = true;
+    
+    try {
+      console.log(`Updating market data for ${symbols.length} symbols`);
+      
+      // Use the optimized market data service
+      const optimizedData = await marketDataOptimizer.getMarketData(symbols);
+      
+      // Convert to unified format
+      const unifiedData: UnifiedMarketData[] = optimizedData.map(data => ({
+        symbol: data.symbol,
+        price: data.price,
+        change: data.change,
+        changePercent: data.changePercent,
+        volume: data.volume,
+        timestamp: data.timestamp,
+        lastUpdated: data.lastUpdated,
+        dataQuality: data.dataQuality,
+        source: data.source
+      }));
+
+      // Update current data
+      unifiedData.forEach(data => {
+        this.currentData.set(data.symbol, data);
+      });
+
+      // Notify all subscribers
+      this.notifySubscribers(unifiedData);
+      
+      console.log(`Market data updated for ${unifiedData.length} symbols`);
+    } catch (error) {
+      console.error('Error updating market data:', error);
+    } finally {
+      this.isUpdating = false;
+    }
+  }
+
+  /**
+   * Notify all subscribers of new data
+   */
+  private notifySubscribers(data: UnifiedMarketData[]): void {
+    this.subscribers.forEach(callback => {
+      try {
+        callback(data);
+      } catch (error) {
+        console.error('Error in subscriber callback:', error);
+      }
+    });
+  }
+
+  /**
+   * Get current market data for specific symbols
+   */
+  getMarketData(symbols: string[]): UnifiedMarketData[] {
+    return symbols
+      .map(symbol => this.currentData.get(symbol))
+      .filter(Boolean) as UnifiedMarketData[];
+  }
+
+  /**
+   * Get all current market data
+   */
+  getAllMarketData(): UnifiedMarketData[] {
+    return Array.from(this.currentData.values());
+  }
+
+  /**
+   * Update symbols to track
+   */
+  async updateSymbols(symbols: string[]): Promise<void> {
+    if (!this.isInitialized) {
+      await this.initialize(symbols);
+      return;
+    }
+
+    // Clear current data for symbols no longer being tracked
+    const currentSymbols = new Set(this.currentData.keys());
+    const newSymbols = new Set(symbols);
+    
+    for (const symbol of currentSymbols) {
+      if (!newSymbols.has(symbol)) {
+        this.currentData.delete(symbol);
+      }
+    }
+
+    // Update data for new symbols
+    await this.updateMarketData(symbols);
+  }
+
+  /**
+   * Get rate limit status
+   */
+  getRateLimitStatus() {
+    return marketDataOptimizer.getRateLimitStatus();
+  }
+
+  /**
+   * Get cache statistics
+   */
+  getCacheStats() {
+    return marketDataOptimizer.getCacheStats();
+  }
+
+  /**
+   * Cleanup resources
+   */
+  cleanup(): void {
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+    this.subscribers.clear();
+    this.currentData.clear();
+    this.isInitialized = false;
+    console.log('Unified Market Data Manager cleaned up');
+  }
+
+  /**
+   * Check if manager is initialized
+   */
+  isManagerInitialized(): boolean {
+    return this.isInitialized;
+  }
+
+  /**
+   * Get current status
+   */
+  getStatus(): {
+    initialized: boolean;
+    isUpdating: boolean;
+    trackedSymbols: number;
+    subscribers: number;
+    lastUpdate: string | null;
+  } {
+    const lastData = Array.from(this.currentData.values())[0];
+    return {
+      initialized: this.isInitialized,
+      isUpdating: this.isUpdating,
+      trackedSymbols: this.currentData.size,
+      subscribers: this.subscribers.size,
+      lastUpdate: lastData?.timestamp || null
+    };
+  }
+}
+
+export const unifiedMarketDataManager = UnifiedMarketDataManager.getInstance(); 

@@ -1,36 +1,201 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Trade-Tracker MVP
+
+A comprehensive web application for tracking stock trades, analyzing performance against market benchmarks, visualizing trading data with technical indicators, and gaining AI-powered insights into trading behavior.
+
+## Features
+
+### ✅ Completed Features
+- **Project Setup**: Next.js 14 with TypeScript, Tailwind CSS, and App Router
+- **Database**: SQLite with Prisma ORM for Trade and Performance models
+- **Chart Integration**: Chart-img API integration with caching and technical indicators
+- **Market Data**: Alpha Vantage API integration for S&P 500 data and performance benchmarking
+
+### 🚧 In Progress
+- Trade management API endpoints and UI components
+- Performance analysis features
+- Excel export functionality
+- Real-time market data integration
+
+## Technology Stack
+
+- **Frontend**: Next.js 14, React 18, TypeScript, Tailwind CSS
+- **Backend**: Next.js API routes, Prisma ORM, SQLite
+- **External APIs**: Chart-img (charts), Alpha Vantage (market data)
+- **Caching**: Redis (Upstash)
+- **Data Export**: SheetJS
 
 ## Getting Started
 
-First, run the development server:
+### Prerequisites
+- Node.js 18.17.0 or later
+- npm 9.6.7 or later
 
+### Installation
+
+1. Clone the repository:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+git clone <repository-url>
+cd trade-tracker
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Install dependencies:
+```bash
+npm install
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Set up environment variables:
+Create a `.env.local` file in the root directory with the following variables:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```env
+# Application Configuration
+NEXT_PUBLIC_APP_NAME="Trade-Tracker MVP"
 
-## Learn More
+# Database Configuration
+DATABASE_URL="file:./dev.db"
 
-To learn more about Next.js, take a look at the following resources:
+# Chart-img API Configuration
+CHART_IMG_API_KEY="your_chart_img_api_key_here"
+CHART_IMG_BASE_URL="https://api.chart-img.com/v1"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Alpha Vantage API Configuration
+ALPHA_VANTAGE_API_KEY="your_alpha_vantage_api_key_here"
+ALPHA_VANTAGE_BASE_URL="https://www.alphavantage.co/query"
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Redis Configuration (for caching)
+REDIS_URL="redis://localhost:6379"
+REDIS_PASSWORD="your_redis_password_here"
 
-## Deploy on Vercel
+# Chart Configuration
+CHART_CACHE_TTL="3600"
+CHART_MAX_RETRIES="3"
+CHART_RETRY_DELAY="1000"
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+# Market Data Configuration
+MARKET_DATA_CACHE_TTL="1800"
+MARKET_DATA_MAX_RETRIES="3"
+MARKET_DATA_RETRY_DELAY="1000"
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+4. Set up the database:
+```bash
+npm run prisma:generate
+npm run prisma:migrate
+npm run prisma:seed
+```
+
+5. Start the development server:
+```bash
+npm run dev
+```
+
+6. Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+## API Integration Setup
+
+### Chart-img API
+The application integrates with Chart-img API for generating professional stock charts with technical indicators.
+
+**Features:**
+- Candlestick charts with EMA-20, EMA-50, and RSI indicators
+- Multiple timeframes (1D, 1W, 1M, 3M, 1Y)
+- Trade entry/exit point markers
+- Redis caching for improved performance
+- Error handling and retry logic
+
+**Setup:**
+1. Sign up for a Chart-img API key at [chart-img.com](https://chart-img.com)
+2. Add your API key to the `.env.local` file
+3. Configure Redis for caching (optional but recommended)
+
+**Usage:**
+- Visit `/charts` to test chart generation
+- Use the API endpoint `/api/charts/[ticker]` for programmatic access
+- Charts are automatically cached to reduce API calls
+
+### Alpha Vantage API
+The application integrates with Alpha Vantage API for retrieving real-time and historical market data.
+
+**Features:**
+- Real-time S&P 500 index data
+- Historical market performance data
+- S&P 500 return calculations
+- Trade performance benchmarking
+- Redis caching for improved performance
+- Error handling and retry logic
+
+**Setup:**
+1. Sign up for an Alpha Vantage API key at [alphavantage.co](https://www.alphavantage.co)
+2. Add your API key to the `.env.local` file
+3. Configure Redis for caching (optional but recommended)
+
+**Usage:**
+- Visit `/market` to view S&P 500 data
+- Use the API endpoint `/api/market/sp500` for programmatic access
+- Market data is automatically cached to reduce API calls
+
+### Testing API Integrations
+```bash
+# Test the chart service
+npx ts-node scripts/test-chart-api.ts
+
+# Test the market data service
+npx ts-node scripts/test-market-api.ts
+
+# Test the API endpoints
+curl "http://localhost:3000/api/charts/test"
+curl "http://localhost:3000/api/market/test"
+```
+
+## Project Structure
+
+```
+src/
+├── app/                    # Next.js App Router pages
+│   ├── api/               # API routes
+│   │   ├── charts/        # Chart generation endpoints
+│   │   └── trades/        # Trade management endpoints
+│   ├── charts/            # Chart visualization pages
+│   ├── dashboard/         # Main dashboard
+│   └── trades/            # Trade management pages
+├── components/            # React components
+│   ├── charts/           # Chart-related components
+│   ├── trades/           # Trade-related components
+│   └── ui/               # Reusable UI components
+├── lib/                  # Utility libraries
+├── services/             # External API services
+├── types/                # TypeScript type definitions
+└── prisma/               # Database schema and migrations
+```
+
+## Development
+
+### Available Scripts
+- `npm run dev` - Start development server
+- `npm run build` - Build for production
+- `npm run start` - Start production server
+- `npm run lint` - Run ESLint
+- `npm run prisma:studio` - Open Prisma Studio
+- `npm run prisma:generate` - Generate Prisma client
+- `npm run prisma:migrate` - Run database migrations
+- `npm run prisma:seed` - Seed database with sample data
+
+### Database Management
+```bash
+# Reset database
+npm run reset-db
+
+# View database in Prisma Studio
+npm run prisma:studio
+```
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+This project is licensed under the MIT License.
