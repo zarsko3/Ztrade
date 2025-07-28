@@ -1,4 +1,5 @@
 import yahooFinance from 'yahoo-finance2';
+import { alphaVantageService } from './alpha-vantage-service';
 
 // Suppress Yahoo Finance notices
 yahooFinance.suppressNotices(['yahooSurvey']);
@@ -12,7 +13,7 @@ export interface OptimizedMarketData {
   timestamp: string;
   lastUpdated: string;
   dataQuality: 'live' | 'cached' | 'mock';
-  source: 'yahoo' | 'cache' | 'fallback';
+  source: 'yahoo' | 'alpha-vantage' | 'cache' | 'fallback';
 }
 
 export interface RateLimitConfig {
@@ -112,7 +113,7 @@ class MarketDataOptimizer {
     // Check rate limits
     await this.checkRateLimits();
 
-    // Fetch from Yahoo Finance
+    // Try Yahoo Finance first
     try {
       const quote = await this.fetchWithRetry(symbol);
       
@@ -133,8 +134,32 @@ class MarketDataOptimizer {
       
       return data;
     } catch (error) {
-      console.error(`Failed to fetch data for ${symbol}:`, error);
-      throw error;
+      console.error(`Yahoo Finance failed for ${symbol}, trying Alpha Vantage:`, error);
+      
+      try {
+        // Fallback to Alpha Vantage
+        const alphaVantageQuote = await alphaVantageService.getQuote(symbol);
+        
+        const data: OptimizedMarketData = {
+          symbol: alphaVantageQuote.symbol,
+          price: alphaVantageQuote.price,
+          change: alphaVantageQuote.change,
+          changePercent: alphaVantageQuote.changePercent,
+          volume: alphaVantageQuote.volume,
+          timestamp: alphaVantageQuote.timestamp,
+          lastUpdated: alphaVantageQuote.lastUpdated,
+          dataQuality: alphaVantageQuote.dataQuality,
+          source: alphaVantageQuote.source
+        };
+
+        // Cache the data
+        this.cacheData(symbol, data);
+        
+        return data;
+      } catch (alphaVantageError) {
+        console.error(`Alpha Vantage also failed for ${symbol}:`, alphaVantageError);
+        return this.createFallbackData(symbol);
+      }
     }
   }
 

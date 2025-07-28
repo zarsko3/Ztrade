@@ -85,11 +85,74 @@ class FinnhubService {
       return cached.data;
     }
 
-    // For now, return fallback news since Finnhub API might be unreliable
-    // This ensures the app works even when external APIs are down
-    // TODO: Re-enable Finnhub API once we have a valid API key and working endpoint
-    console.log('Using fallback news data - Finnhub API temporarily disabled');
-    return this.getFallbackNews();
+    try {
+      console.log('Fetching financial news from Finnhub API...');
+      
+      const queryParams = new URLSearchParams({
+        q: 'financial markets OR stock market OR trading OR investment OR economy OR federal reserve OR earnings',
+        from: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0], // Last 24 hours
+        to: new Date().toISOString().split('T')[0],
+        token: FINNHUB_API_KEY
+      });
+
+      // Use Finnhub news endpoint
+      const apiUrl = `${FINNHUB_API_BASE_URL}/news?${queryParams}`;
+      console.log('Finnhub API URL:', apiUrl.replace(FINNHUB_API_KEY, '[API_KEY_HIDDEN]'));
+
+      // Add timeout to the fetch request
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => {
+        console.log('Finnhub API request timed out after 10 seconds');
+        controller.abort();
+      }, 10000); // 10 second timeout
+
+      const response = await fetch(apiUrl, {
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
+      console.log('Finnhub API response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error');
+        console.error('Finnhub API error response:', errorText);
+        throw new Error(`Finnhub API error: ${response.status} ${response.statusText} - ${errorText}`);
+      }
+
+      const data: FinnhubApiResponse['articles'] = await response.json();
+      
+      console.log('Finnhub API successful, articles found:', data.length);
+      
+      const transformedNews = this.transformNewsData(data.slice(0, limit));
+      
+      // Cache the results
+      this.cache.set(cacheKey, {
+        data: transformedNews,
+        timestamp: Date.now()
+      });
+
+      return transformedNews;
+    } catch (error) {
+      console.error('Error fetching Finnhub news:', error);
+      
+      // Check if it's a network error or API error
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          console.log('Finnhub API request was aborted due to timeout');
+        } else if (error.message.includes('Failed to fetch')) {
+          console.log('Finnhub API network error - service may be unavailable');
+        } else {
+          console.log('Finnhub API error:', error.message);
+        }
+      }
+      
+      // Return fallback data if API fails
+      console.log('Using fallback news data due to API failure');
+      return this.getFallbackNews();
+    }
     
     /* 
     // Original Finnhub API implementation (commented out due to reliability issues)

@@ -13,6 +13,7 @@ interface PositionDetailsProps {
 export function PositionDetails({ position, onClose, className = '' }: PositionDetailsProps) {
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
+  const [positionData, setPositionData] = useState<Position>(position);
 
   // Fetch current market price
   useEffect(() => {
@@ -26,7 +27,29 @@ export function PositionDetails({ position, onClose, className = '' }: PositionD
       if (response.ok) {
         const data = await response.json();
         if (data.status === 'success' && data.data) {
-          setCurrentPrice(data.data.price);
+          const price = data.data.regularMarketPrice;
+          setCurrentPrice(price);
+          
+          // Update position data with current price calculations
+          if (price && positionData.totalQuantity > 0) {
+            const currentValue = positionData.totalQuantity * price;
+            let unrealizedPnL = 0;
+            
+            if (positionData.isShort) {
+              unrealizedPnL = positionData.totalInvestment - currentValue - positionData.totalFees;
+            } else {
+              unrealizedPnL = currentValue - positionData.totalInvestment - positionData.totalFees;
+            }
+            
+            const unrealizedPnLPercentage = (unrealizedPnL / positionData.totalInvestment) * 100;
+            
+            setPositionData({
+              ...positionData,
+              currentValue,
+              unrealizedPnL,
+              unrealizedPnLPercentage
+            });
+          }
         }
       }
     } catch (error) {
@@ -133,18 +156,18 @@ export function PositionDetails({ position, onClose, className = '' }: PositionD
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Current Value</p>
             <p className="text-lg font-semibold text-gray-900 dark:text-white">
-              {position.currentValue ? formatCurrency(position.currentValue) : 'N/A'}
+              {positionData.currentValue ? formatCurrency(positionData.currentValue) : 'N/A'}
             </p>
           </div>
           <div>
             <p className="text-xs text-gray-500 dark:text-gray-400">Unrealized P&L</p>
             <div>
-              <p className={`text-lg font-semibold ${getPnLColor(position.unrealizedPnL || 0)}`}>
-                {position.unrealizedPnL !== undefined ? formatCurrency(position.unrealizedPnL) : 'N/A'}
+              <p className={`text-lg font-semibold ${getPnLColor(positionData.unrealizedPnL || 0)}`}>
+                {positionData.unrealizedPnL !== undefined ? formatCurrency(positionData.unrealizedPnL) : 'N/A'}
               </p>
-              {position.unrealizedPnLPercentage !== undefined && (
-                <p className={`text-sm ${getPnLColor(position.unrealizedPnLPercentage)}`}>
-                  {formatPercentage(position.unrealizedPnLPercentage)}
+              {positionData.unrealizedPnLPercentage !== undefined && (
+                <p className={`text-sm ${getPnLColor(positionData.unrealizedPnLPercentage)}`}>
+                  {formatPercentage(positionData.unrealizedPnLPercentage)}
                 </p>
               )}
             </div>

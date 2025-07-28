@@ -280,8 +280,24 @@ export function TradeList({ className = '' }: TradeListProps) {
     setPagination(prev => ({ ...prev, page: newPage }));
   };
 
-  const handleTradeClick = (tradeId: number) => {
-    router.push(`/trades/${tradeId}`);
+  const handleTradeClick = async (trade: TradeWithCalculations) => {
+    // For open trades, show position details (same as "View Position")
+    if (trade.isOpen) {
+      try {
+        const position = await checkPosition(trade.ticker);
+        if (position) {
+          setPositionDetailsModal({
+            isOpen: true,
+            position
+          });
+        }
+      } catch (error) {
+        console.error('Error opening position details modal:', error);
+      }
+    } else {
+      // For closed trades, navigate to the trade detail page
+      router.push(`/trades/${trade.id}`);
+    }
   };
 
   const handleDeleteClick = (e: React.MouseEvent, tradeId: number, isOpen: boolean) => {
@@ -450,7 +466,7 @@ export function TradeList({ className = '' }: TradeListProps) {
           displayTrades.map((trade) => (
             <div
               key={trade.id}
-              onClick={() => handleTradeClick(trade.id)}
+              onClick={() => handleTradeClick(trade)}
               className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-all duration-200"
             >
               <div className="flex items-center justify-between">

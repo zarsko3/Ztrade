@@ -156,7 +156,7 @@ export class TradeService {
       if (response.ok) {
         const data = await response.json();
         if (data.status === 'success' && data.data) {
-          const currentPrice = data.data.price;
+          const currentPrice = data.data.regularMarketPrice;
           currentValue = totalQuantity * currentPrice;
           
           if (isShort) {
