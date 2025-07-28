@@ -41,7 +41,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     // Load notifications from localStorage
-    const savedNotifications = localStorage.getItem('trade-tracker-notifications');
+    const savedNotifications = localStorage.getItem('z-trade-notifications');
     if (savedNotifications) {
       const parsed = JSON.parse(savedNotifications);
       setNotifications(parsed.map((n: any) => ({
@@ -53,7 +53,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
 
   useEffect(() => {
     // Save notifications to localStorage
-    localStorage.setItem('trade-tracker-notifications', JSON.stringify(notifications));
+    localStorage.setItem('z-trade-notifications', JSON.stringify(notifications));
   }, [notifications]);
 
   const addNotification = (notification: Omit<Notification, 'id' | 'timestamp' | 'read'>) => {

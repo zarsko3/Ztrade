@@ -1,0 +1,165 @@
+// Production-ready Prisma schema for PostgreSQL
+// Use this when migrating to Supabase or other PostgreSQL providers
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// Trade model for storing stock trade information
+model Trade {
+  id          Int       @id @default(autoincrement())
+  ticker      String    // Stock ticker symbol (e.g., AAPL, MSFT)
+  entryDate   DateTime  // Date when the trade was entered
+  entryPrice  Float     // Price per share at entry
+  exitDate    DateTime? // Date when the trade was exited (null for open positions)
+  exitPrice   Float?    // Price per share at exit (null for open positions)
+  quantity    Float     // Number of shares (supports fractional shares)
+  fees        Float?    // Trading fees (optional)
+  notes       String?   // Additional notes about the trade (optional)
+  tags        String?   // Comma-separated tags for categorization (optional)
+  isShort     Boolean   @default(false) // Whether this is a short position
+  
+  // AI-Enhanced Fields
+  confidenceScore   Float?   // AI confidence in trade decision (0-1)
+  patternMatched    String?  // Identified pattern type
+  aiRecommendation  String?  // AI suggestion for the trade
+  emotionalState    String?  // Trader's emotional state during trade
+  marketConditions  String?  // JSON string of market conditions at trade time
+  
+  // Metadata
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  
+  // Relationship with Performance
+  performance     Performance? @relation(fields: [performanceId], references: [id])
+  performanceId   Int?
+  
+  // AI Relationships
+  insights        TradeInsight[]
+  predictions     TradePrediction[]
+  patterns        TradePattern[] @relation("TradePatterns")
+  
+  // Indexes for improved query performance
+  @@index([ticker])
+  @@index([entryDate])
+  @@index([exitDate])
+  @@index([patternMatched])
+  @@index([confidenceScore])
+}
+
+// Performance model for storing aggregated performance metrics
+model Performance {
+  id              Int       @id @default(autoincrement())
+  period          String    // "weekly", "monthly", or "yearly"
+  startDate       DateTime  // Start date of the period
+  endDate         DateTime  // End date of the period
+  totalTrades     Int       // Total number of trades closed in this period
+  winningTrades   Int       // Number of profitable trades
+  losingTrades    Int       // Number of unprofitable trades
+  profitLoss      Float     // Total profit/loss for the period
+  profitLossPercentage Float // Percentage profit/loss for the period
+  largestWin      Float     // Largest winning trade amount
+  largestLoss     Float     // Largest losing trade amount
+  averageWin      Float     // Average winning trade amount
+  averageLoss     Float     // Average losing trade amount
+  winRate         Float     // Win rate as a percentage (winningTrades / totalTrades * 100)
+  spReturn        Float     // S&P 500 return for the same period (percentage)
+  outperformance  Float     // Outperformance vs S&P 500 (profitLossPercentage - spReturn)
+  
+  // Metadata
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relationships
+  trades          Trade[]   // Trades included in this performance period
+  
+  // Indexes for improved query performance
+  @@index([period])
+  @@index([startDate, endDate])
+  @@unique([period, startDate, endDate]) // Ensure no duplicate periods
+}
+
+// Trade Pattern model for storing identified trading patterns
+model TradePattern {
+  id              Int       @id @default(autoincrement())
+  name            String    // Pattern name (e.g., "Double Top", "Head and Shoulders")
+  description     String?   // Pattern description
+  confidence      Float     // Confidence level (0-1)
+  timeframe       String    // Timeframe (e.g., "1D", "1W", "1M")
+  ticker          String    // Stock ticker
+  detectedAt      DateTime  @default(now())
+  
+  // Relationships
+  trades          Trade[]   @relation("TradePatterns")
+  
+  // Indexes
+  @@index([ticker])
+  @@index([detectedAt])
+  @@index([confidence])
+}
+
+// Trade Insight model for storing AI-generated insights
+model TradeInsight {
+  id              Int       @id @default(autoincrement())
+  tradeId         Int
+  insightType     String    // Type of insight (e.g., "risk", "opportunity", "pattern")
+  title           String    // Insight title
+  description     String    // Insight description
+  confidence      Float     // Confidence level (0-1)
+  createdAt       DateTime  @default(now())
+  
+  // Relationships
+  trade           Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  
+  // Indexes
+  @@index([tradeId])
+  @@index([insightType])
+  @@index([confidence])
+}
+
+// ML Model model for storing trained machine learning models
+model MLModel {
+  id              Int       @id @default(autoincrement())
+  name            String    // Model name
+  version         String    // Model version
+  type            String    // Model type (e.g., "classification", "regression")
+  accuracy        Float?    // Model accuracy
+  parameters      String    // JSON string of model parameters
+  filePath        String?   // Path to model file
+  isActive        Boolean   @default(false) // Whether this model is currently active
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  
+  // Relationships
+  predictions     TradePrediction[]
+  
+  // Indexes
+  @@index([name])
+  @@index([isActive])
+  @@unique([name, version])
+}
+
+// Trade Prediction model for storing ML model predictions
+model TradePrediction {
+  id              Int       @id @default(autoincrement())
+  tradeId         Int
+  modelId         Int
+  prediction      String    // Prediction result
+  confidence      Float     // Confidence level (0-1)
+  features        String    // JSON string of input features
+  createdAt       DateTime  @default(now())
+  
+  // Relationships
+  trade           Trade     @relation(fields: [tradeId], references: [id], onDelete: Cascade)
+  model           MLModel   @relation(fields: [modelId], references: [id])
+  
+  // Indexes
+  @@index([tradeId])
+  @@index([modelId])
+  @@index([confidence])
+} 

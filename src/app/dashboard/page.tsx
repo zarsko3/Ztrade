@@ -6,7 +6,6 @@ import {
   TrendingDown, 
   Activity
 } from 'lucide-react';
-import PerformanceChart from '@/components/charts/PerformanceChart';
 import DistributionChart from '@/components/charts/DistributionChart';
 import DailySummary from '@/components/charts/DailySummary';
 import RecentTradesWithCharts from '@/components/charts/RecentTradesWithCharts';
@@ -15,6 +14,7 @@ import EnhancedGaugeChart from '@/components/charts/EnhancedGaugeChart';
 import WinLossComparison from '@/components/charts/WinLossComparison';
 import MarketDataStatus from '@/components/ui/MarketDataStatus';
 import { RealTimeDashboard } from '@/components/dashboard/RealTimeDashboard';
+import { EconomicNews } from '@/components/market/EconomicNews';
 import { Trade } from '@/types/trade';
 
 interface DashboardStats {
@@ -26,14 +26,6 @@ interface DashboardStats {
   worstTrade: number;
   totalVolume: number;
   averageTradeSize: number;
-}
-
-interface PerformanceData {
-  date: string;
-  pnl: number;
-  cumulative: number;
-  trades: number;
-  winRate: number;
 }
 
 interface DailyTradeData {
@@ -51,7 +43,6 @@ export default function DashboardPage() {
   const router = useRouter();
   const [trades, setTrades] = useState<Trade[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [performanceData, setPerformanceData] = useState<PerformanceData[]>([]);
   const [dailyData, setDailyData] = useState<DailyTradeData[]>([]);
 
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -87,10 +78,6 @@ export default function DashboardPage() {
       // Calculate dashboard stats
       const stats = calculateDashboardStats(trades);
       setStats(stats);
-
-      // Generate performance data for charts
-      const performanceData = generatePerformanceData(trades);
-      setPerformanceData(performanceData);
 
       // Generate daily summary data
       const dailyData = generateDailyData(trades, currentDate);
@@ -169,70 +156,6 @@ export default function DashboardPage() {
       totalVolume,
       averageTradeSize
     };
-  };
-
-  const generatePerformanceData = (trades: Trade[]): PerformanceData[] => {
-    if (trades.length === 0) return [];
-
-    // Group trades by month
-    const monthlyData = new Map<string, { pnl: number; trades: number; wins: number }>();
-    
-    trades.forEach(trade => {
-      if (trade.exitDate && trade.exitPrice) {
-        const date = typeof trade.exitDate === 'string' ? new Date(trade.exitDate) : trade.exitDate;
-        const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
-        
-        const pnl = trade.isShort 
-          ? (trade.entryPrice - trade.exitPrice) * trade.quantity
-          : (trade.exitPrice - trade.entryPrice) * trade.quantity;
-        
-        const existing = monthlyData.get(monthKey) || { pnl: 0, trades: 0, wins: 0 };
-        existing.pnl += pnl;
-        existing.trades += 1;
-        if (pnl > 0) existing.wins += 1;
-        
-        monthlyData.set(monthKey, existing);
-      }
-    });
-
-    // Convert to array and sort by date
-    const sortedData = Array.from(monthlyData.entries())
-      .sort(([a], [b]) => a.localeCompare(b))
-      .map(([date, data]) => ({
-        date,
-        pnl: data.pnl,
-        trades: data.trades,
-        winRate: data.trades > 0 ? (data.wins / data.trades) * 100 : 0
-      }));
-
-    // Calculate cumulative P&L
-    let cumulative = 0;
-    return sortedData.map(item => {
-      cumulative += item.pnl;
-      return {
-        ...item,
-        cumulative
-      };
-    });
-  };
-
-
-
-  const getWinLossDistribution = () => {
-    const closedTrades = trades.filter(trade => trade.exitDate && trade.exitPrice);
-    const wins = closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl > 0;
-    }).length;
-    
-    const losses = closedTrades.length - wins;
-    
-    return [
-      { name: 'Winning Trades', value: wins, color: '#10b981' },
-      { name: 'Losing Trades', value: losses, color: '#ef4444' }
-    ];
   };
 
   const generateDailyData = (trades: Trade[], date: Date): DailyTradeData[] => {
@@ -424,30 +347,32 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-8">
+        <div className="flex items-center justify-between mb-12">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-gray-900 to-gray-600 dark:from-white dark:to-gray-300 bg-clip-text text-transparent">
               Trading Dashboard
             </h1>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
+            <p className="text-gray-600 dark:text-gray-400 mt-3 text-lg">
               Monitor your trading performance and portfolio insights
             </p>
-            <MarketDataStatus className="mt-2" />
+            <div className="mt-4">
+              <MarketDataStatus className="mt-2" />
+            </div>
           </div>
           <button
             onClick={() => router.push('/trades/add')}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg flex items-center space-x-2 transition-colors"
+            className="bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-8 py-4 rounded-2xl flex items-center space-x-3 transition-all duration-300 shadow-lg hover:shadow-xl transform hover:scale-105"
           >
             <Activity className="w-5 h-5" />
-            <span>Add Trade</span>
+            <span className="font-medium">Add Trade</span>
           </button>
         </div>
 
         {/* Daily Summary */}
-        <div className="mb-8">
+        <div className="mb-12">
           <DailySummary
             data={dailyData}
             currentDate={currentDate}
@@ -455,8 +380,13 @@ export default function DashboardPage() {
           />
         </div>
 
+        {/* Economic News */}
+        <div className="mb-12">
+          <EconomicNews />
+        </div>
+
         {/* Recent Trades with Charts */}
-        <div className="mb-8">
+        <div className="mb-12">
           <RecentTradesWithCharts
             trades={trades.slice(0, 3).map(trade => ({
               ...trade,
@@ -473,7 +403,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Real-time Dashboard */}
-        <div className="mb-8">
+        <div className="mb-12">
           <RealTimeDashboard 
             defaultSymbols={['^GSPC', 'AAPL', 'GOOGL', 'MSFT', 'TSLA']}
             showMarketData={true}
@@ -483,7 +413,7 @@ export default function DashboardPage() {
         </div>
 
         {/* Performance Metrics Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 mb-12">
           <EnhancedGaugeChart
             title="Profit Factor"
             value={calculateProfitFactor(trades)}
@@ -517,47 +447,21 @@ export default function DashboardPage() {
           />
         </div>
 
-        {/* Performance Analysis Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Win/Loss Comparison */}
-          <WinLossComparison
-            winningAverage={calculateAverageWinningTrade(trades)}
-            losingAverage={calculateAverageLosingTrade(trades)}
-            winningCount={calculateWinningTrades(trades)}
-            losingCount={calculateLosingTrades(trades)}
-          />
 
-          {/* Win/Loss Distribution */}
-          <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700">
-            <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-              Winning VS Losing Trades
-            </h2>
-            <DistributionChart
-              data={getWinLossDistribution()}
-              type="donut"
-              title="Trade Outcomes"
-              height={250}
-              showLegend={true}
-              showPercentage={true}
+
+        {/* Win/Loss Comparison */}
+        <div className="mb-12">
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-xl border border-gray-200/50 dark:border-gray-700/50 p-8">
+            <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-6">
+              Win/Loss Comparison
+            </h3>
+            <WinLossComparison
+              winningAverage={calculateAverageWinningTrade(trades)}
+              losingAverage={calculateAverageLosingTrade(trades)}
+              winningCount={calculateWinningTrades(trades)}
+              losingCount={calculateLosingTrades(trades)}
             />
           </div>
-        </div>
-
-
-
-        {/* Performance Over Time */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-sm border border-gray-200 dark:border-gray-700 mb-8">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-            Performance Over Time
-          </h2>
-          <PerformanceChart
-            data={performanceData}
-            type="composed"
-            height={300}
-            showGrid={true}
-            showLegend={true}
-            animate={true}
-          />
         </div>
       </div>
     </div>

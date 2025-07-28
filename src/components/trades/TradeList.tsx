@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { TradeWithCalculations } from '@/types/trade';
+import { TradeWithCalculations, Position, AddToPositionRequest } from '@/types/trade';
 import { TradeReturnData, MarketDataService } from '@/services/market-data-service';
 import { useRouter } from 'next/navigation';
 import { CloseTradeModal } from './CloseTradeModal';
+import { AddToPositionForm } from './AddToPositionForm';
+import { PositionDetails } from './PositionDetails';
 
 const marketDataService = MarketDataService.getInstance();
 
@@ -52,6 +54,28 @@ export function TradeList({ className = '' }: TradeListProps) {
   });
   const [closingTrade, setClosingTrade] = useState<number | null>(null);
 
+  // Add to Position state
+  const [addToPositionModal, setAddToPositionModal] = useState<{
+    isOpen: boolean;
+    ticker: string;
+    position: Position | null;
+  }>({
+    isOpen: false,
+    ticker: '',
+    position: null
+  });
+  const [addingToPosition, setAddingToPosition] = useState(false);
+  const [positionCache, setPositionCache] = useState<Record<string, Position>>({});
+
+  // Position Details state
+  const [positionDetailsModal, setPositionDetailsModal] = useState<{
+    isOpen: boolean;
+    position: Position | null;
+  }>({
+    isOpen: false,
+    position: null
+  });
+
   // Memoize the fetchTrades function to prevent unnecessary re-renders
   const fetchTrades = useCallback(async () => {
     try {
@@ -84,6 +108,112 @@ export function TradeList({ className = '' }: TradeListProps) {
     }
   }, [pagination.page, pagination.limit, filters.ticker, filters.status, filters.search]);
 
+  // Check if a ticker has an open position
+  const checkPosition = useCallback(async (ticker: string): Promise<Position | null> => {
+    // Check cache first
+    if (positionCache[ticker]) {
+      return positionCache[ticker];
+    }
+
+    try {
+      const response = await fetch(`/api/trades/position/${ticker}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.position) {
+          setPositionCache(prev => ({ ...prev, [ticker]: data.position }));
+          return data.position;
+        }
+      }
+    } catch (error) {
+      console.error('Error checking position:', error);
+    }
+    return null;
+  }, [positionCache]);
+
+  // Handle Add to Position button click
+  const handleAddToPositionClick = async (e: React.MouseEvent, ticker: string) => {
+    e.stopPropagation();
+    
+    try {
+      const position = await checkPosition(ticker);
+      if (position) {
+        setAddToPositionModal({
+          isOpen: true,
+          ticker,
+          position
+        });
+      }
+    } catch (error) {
+      console.error('Error opening add to position modal:', error);
+    }
+  };
+
+  // Handle Add to Position form submission
+  const handleAddToPositionSubmit = async (data: AddToPositionRequest) => {
+    try {
+      setAddingToPosition(true);
+      
+      const response = await fetch('/api/trades/add-to-position', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to add to position');
+      }
+
+      const result = await response.json();
+      
+      // Clear position cache for this ticker
+      setPositionCache(prev => {
+        const newCache = { ...prev };
+        delete newCache[data.ticker];
+        return newCache;
+      });
+
+      // Close modal and refresh trades
+      setAddToPositionModal({ isOpen: false, ticker: '', position: null });
+      await fetchTrades();
+      
+    } catch (error) {
+      console.error('Error adding to position:', error);
+      alert(error instanceof Error ? error.message : 'Failed to add to position');
+    } finally {
+      setAddingToPosition(false);
+    }
+  };
+
+  // Handle Add to Position modal close
+  const handleAddToPositionCancel = () => {
+    setAddToPositionModal({ isOpen: false, ticker: '', position: null });
+  };
+
+  // Handle View Position button click
+  const handleViewPositionClick = async (e: React.MouseEvent, ticker: string) => {
+    e.stopPropagation();
+    
+    try {
+      const position = await checkPosition(ticker);
+      if (position) {
+        setPositionDetailsModal({
+          isOpen: true,
+          position
+        });
+      }
+    } catch (error) {
+      console.error('Error opening position details modal:', error);
+    }
+  };
+
+  // Handle Position Details modal close
+  const handlePositionDetailsClose = () => {
+    setPositionDetailsModal({ isOpen: false, position: null });
+  };
+
   // Memoize the loadReturnData function
   const loadReturnData = useCallback(async (tradesToProcess: TradeWithCalculations[]) => {
     if (tradesToProcess.length === 0) {
@@ -98,93 +228,53 @@ export function TradeList({ className = '' }: TradeListProps) {
       isLoadingReturns: true
     })));
 
-    // Process trades in batches to avoid overwhelming the API
-    const batchSize = 3;
-    const processedTrades: TradeWithReturns[] = [];
+    // Load return data for each trade
+    const tradesWithData = await Promise.all(
+      tradesToProcess.map(async (trade) => {
+        try {
+          const returnData = await marketDataService.getTradeReturnData({
+            entryPrice: trade.entryPrice,
+            exitPrice: trade.exitPrice,
+            isShort: trade.isShort,
+            entryDate: typeof trade.entryDate === 'string' ? trade.entryDate : trade.entryDate.toISOString(),
+            exitDate: trade.exitDate ? (typeof trade.exitDate === 'string' ? trade.exitDate : trade.exitDate.toISOString()) : undefined,
+            ticker: trade.ticker
+          });
+          return {
+            ...trade,
+            returnData,
+            isLoadingReturns: false
+          };
+        } catch (error) {
+          console.error(`Error loading return data for trade ${trade.id}:`, error);
+          return {
+            ...trade,
+            returnData: undefined,
+            isLoadingReturns: false
+          };
+        }
+      })
+    );
 
-    for (let i = 0; i < tradesToProcess.length; i += batchSize) {
-      const batch = tradesToProcess.slice(i, i + batchSize);
-      
-      const batchResults = await Promise.all(
-        batch.map(async (trade) => {
-          try {
-            const returnData = await marketDataService.getTradeReturnData({
-              entryPrice: trade.entryPrice,
-              exitPrice: trade.exitPrice,
-              isShort: trade.isShort,
-              entryDate: typeof trade.entryDate === 'string' ? trade.entryDate : trade.entryDate.toISOString(),
-              exitDate: trade.exitDate ? (typeof trade.exitDate === 'string' ? trade.exitDate : trade.exitDate.toISOString()) : undefined,
-              ticker: trade.ticker
-            });
-            
-            return {
-              ...trade,
-              returnData,
-              isLoadingReturns: false
-            };
-          } catch (error) {
-            console.error('Error loading return data for trade:', trade.id, error);
-            return {
-              ...trade,
-              returnData: undefined,
-              isLoadingReturns: false
-            };
-          }
-        })
-      );
-      
-      processedTrades.push(...batchResults);
-      
-      // Update state incrementally to show progress
-      setTradesWithReturns(prev => {
-        const newTrades = [...prev];
-        batchResults.forEach((result, index) => {
-          const globalIndex = i + index;
-          if (globalIndex < newTrades.length) {
-            newTrades[globalIndex] = result;
-          }
-        });
-        return newTrades;
-      });
-
-      // Small delay between batches to avoid API rate limiting
-      if (i + batchSize < tradesToProcess.length) {
-        await new Promise(resolve => setTimeout(resolve, 100));
-      }
-    }
+    setTradesWithReturns(tradesWithData);
   }, []);
 
-  // Fetch trades when pagination or filters change
+  // Load return data when trades change
   useEffect(() => {
-    fetchTrades();
-  }, [fetchTrades]);
-
-  // Load return data when trades change, but only if trades actually changed
-  useEffect(() => {
-    const tradeIds = trades.map(t => t.id).join(',');
-    const memoKey = `${tradeIds}-${trades.length}`;
-    
-    // Use a ref to track the last processed trades to avoid unnecessary processing
-    const lastProcessedKey = sessionStorage.getItem('lastProcessedTrades');
-    
-    if (lastProcessedKey !== memoKey) {
-      sessionStorage.setItem('lastProcessedTrades', memoKey);
+    if (trades.length > 0) {
       loadReturnData(trades);
     }
   }, [trades, loadReturnData]);
 
-  // Refresh trades when the component mounts or when returning from other pages
+  // Load trades on mount and when filters change
   useEffect(() => {
-    const handleFocus = () => {
-      // Only refresh if the component is still mounted and not already loading
-      if (!loading) {
-        fetchTrades();
-      }
-    };
+    fetchTrades();
+  }, [fetchTrades]);
 
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, [fetchTrades, loading]);
+  const handleFocus = () => {
+    // This function is called when the component gains focus
+    // You can add any focus-related logic here
+  };
 
   const handlePageChange = (newPage: number) => {
     setPagination(prev => ({ ...prev, page: newPage }));
@@ -196,7 +286,11 @@ export function TradeList({ className = '' }: TradeListProps) {
 
   const handleDeleteClick = (e: React.MouseEvent, tradeId: number, isOpen: boolean) => {
     e.stopPropagation();
-    setDeleteConfirm({ id: tradeId, isOpen });
+    if (isOpen) {
+      alert('Cannot delete an open trade. Please close it first.');
+      return;
+    }
+    setDeleteConfirm({ id: tradeId, isOpen: true });
   };
 
   const handleDeleteConfirm = async (tradeId: number) => {
@@ -204,25 +298,21 @@ export function TradeList({ className = '' }: TradeListProps) {
       setDeleting(tradeId);
       
       const response = await fetch(`/api/trades/${tradeId}`, {
-        method: 'DELETE'
+        method: 'DELETE',
       });
 
       if (!response.ok) {
         throw new Error('Failed to delete trade');
       }
 
-      // Remove the trade from the list
-      setTrades(prev => prev.filter(trade => trade.id !== tradeId));
-      setTradesWithReturns(prev => prev.filter(trade => trade.id !== tradeId));
-      
-      // Show success message (you can implement a toast notification here)
-      console.log('Trade deleted successfully');
+      // Refresh the trades list
+      await fetchTrades();
+      setDeleteConfirm(null);
     } catch (error) {
       console.error('Error deleting trade:', error);
-      setError('Failed to delete trade');
+      alert('Failed to delete trade');
     } finally {
       setDeleting(null);
-      setDeleteConfirm(null);
     }
   };
 
@@ -241,34 +331,27 @@ export function TradeList({ className = '' }: TradeListProps) {
     try {
       setClosingTrade(closeTradeModal.trade.id);
       
-      const response = await fetch(`/api/trades/${closeTradeModal.trade.id}`, {
-        method: 'PUT',
+      const response = await fetch(`/api/trades/${closeTradeModal.trade.id}/close`, {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
           exitDate,
-          exitPrice
-        })
+          exitPrice,
+        }),
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Failed to close trade');
+        throw new Error('Failed to close trade');
       }
 
-      // Refresh the trades list to show updated data
+      // Refresh the trades list
       await fetchTrades();
-      
-      // Close the modal
       setCloseTradeModal({ isOpen: false, trade: null });
-      setClosingTrade(null);
-      
-      // Show success message (you can implement a toast notification here)
-      console.log('Trade closed successfully');
     } catch (error) {
       console.error('Error closing trade:', error);
-      throw error; // Re-throw to let the modal handle the error
+      alert('Failed to close trade');
     } finally {
       setClosingTrade(null);
     }
@@ -294,9 +377,7 @@ export function TradeList({ className = '' }: TradeListProps) {
   };
 
   const getReturnColor = (percentage: number) => {
-    if (percentage > 0) return 'text-green-600';
-    if (percentage < 0) return 'text-red-600';
-    return 'text-gray-600';
+    return percentage >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400';
   };
 
   // Memoize the filtered and sorted trades to prevent unnecessary re-renders
@@ -342,16 +423,16 @@ export function TradeList({ className = '' }: TradeListProps) {
   }
 
   return (
-    <div className={`bg-white rounded-lg shadow ${className}`}>
+    <div className={`bg-white dark:bg-gray-800 rounded-lg shadow ${className}`}>
       {/* Header */}
-      <div className="px-6 py-4 border-b border-gray-200">
+      <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-black dark:bg-black">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-gray-900">Trades</h2>
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Trades</h2>
           <div className="flex items-center space-x-2">
             <button
               onClick={fetchTrades}
               disabled={loading}
-              className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded transition-colors disabled:opacity-50"
+              className="px-3 py-1 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900 dark:hover:bg-blue-800 dark:text-blue-300 rounded transition-colors disabled:opacity-50"
             >
               {loading ? 'Loading...' : 'Refresh'}
             </button>
@@ -360,9 +441,9 @@ export function TradeList({ className = '' }: TradeListProps) {
       </div>
 
       {/* Trades List */}
-      <div className="divide-y divide-gray-200">
+      <div className="divide-y divide-gray-200 dark:divide-gray-700">
         {displayTrades.length === 0 ? (
-          <div className="p-6 text-center text-gray-500">
+          <div className="p-6 text-center text-gray-500 dark:text-gray-400">
             No trades found
           </div>
         ) : (
@@ -370,36 +451,36 @@ export function TradeList({ className = '' }: TradeListProps) {
             <div
               key={trade.id}
               onClick={() => handleTradeClick(trade.id)}
-              className="p-4 hover:bg-gray-50 cursor-pointer transition-colors"
+              className="p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 cursor-pointer transition-all duration-200"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3">
-                    <div className="font-medium text-gray-900">{trade.ticker}</div>
-                    <div className="text-sm text-gray-500">
+                    <div className="font-semibold text-lg text-gray-900 dark:text-white">{trade.ticker}</div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400">
                       {trade.isShort ? 'SHORT' : 'LONG'}
                     </div>
                     {trade.isOpen ? (
-                      <span className="px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                      <span className="px-3 py-1 text-xs font-medium bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400 rounded-full">
                         Open
                       </span>
                     ) : (
-                      <span className="px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full">
+                      <span className="px-3 py-1 text-xs font-medium bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400 rounded-full">
                         Closed
                       </span>
                     )}
                   </div>
                   
-                  <div className="mt-1 text-sm text-gray-600">
+                  <div className="mt-2 text-sm text-gray-600 dark:text-gray-400">
                     {formatDate(trade.entryDate)} - {trade.exitDate ? formatDate(trade.exitDate) : 'Open'}
                   </div>
                   
                   <div className="mt-1 text-sm">
-                    <span className="text-gray-600">
+                    <span className="text-gray-600 dark:text-gray-400">
                       {trade.quantity.toFixed(4)} shares @ {formatCurrency(trade.entryPrice)}
                     </span>
                     {trade.exitPrice && (
-                      <span className="ml-2 text-gray-600">
+                      <span className="ml-2 text-gray-600 dark:text-gray-400">
                         → {formatCurrency(trade.exitPrice)}
                       </span>
                     )}
@@ -431,19 +512,33 @@ export function TradeList({ className = '' }: TradeListProps) {
                   )}
                 </div>
 
-                <div className="ml-4 flex items-center space-x-2">
+                <div className="ml-6 flex items-center space-x-3">
                   {trade.isOpen && (
-                    <button
-                      onClick={(e) => handleCloseTradeClick(e, trade)}
-                      className="px-3 py-1 text-sm bg-green-100 hover:bg-green-200 text-green-700 rounded transition-colors"
-                      disabled={closingTrade === trade.id}
-                    >
-                      {closingTrade === trade.id ? 'Closing...' : 'Close Trade'}
-                    </button>
+                    <>
+                      <button
+                        onClick={(e) => handleViewPositionClick(e, trade.ticker)}
+                        className="px-4 py-2 text-sm bg-purple-100 hover:bg-purple-200 text-purple-700 dark:bg-purple-900/20 dark:hover:bg-purple-900/30 dark:text-purple-400 rounded-lg transition-all duration-200 font-medium"
+                      >
+                        View Position
+                      </button>
+                      <button
+                        onClick={(e) => handleAddToPositionClick(e, trade.ticker)}
+                        className="px-4 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-900/30 dark:text-blue-400 rounded-lg transition-all duration-200 font-medium"
+                      >
+                        Add to Position
+                      </button>
+                      <button
+                        onClick={(e) => handleCloseTradeClick(e, trade)}
+                        className="px-4 py-2 text-sm bg-green-100 hover:bg-green-200 text-green-700 dark:bg-green-900/20 dark:hover:bg-green-900/30 dark:text-green-400 rounded-lg transition-all duration-200 font-medium"
+                        disabled={closingTrade === trade.id}
+                      >
+                        {closingTrade === trade.id ? 'Closing...' : 'Close Trade'}
+                      </button>
+                    </>
                   )}
                   <button
                     onClick={(e) => handleDeleteClick(e, trade.id, trade.isOpen)}
-                    className="text-red-600 hover:text-red-800 transition-colors"
+                    className="px-4 py-2 text-sm bg-red-100 hover:bg-red-200 text-red-700 dark:bg-red-900/20 dark:hover:bg-red-900/30 dark:text-red-400 rounded-lg transition-all duration-200 font-medium"
                     disabled={deleting === trade.id}
                   >
                     {deleting === trade.id ? 'Deleting...' : 'Delete'}
@@ -523,6 +618,33 @@ export function TradeList({ className = '' }: TradeListProps) {
           trade={closeTradeModal.trade}
           loading={closingTrade === closeTradeModal.trade.id}
         />
+      )}
+
+      {/* Add to Position Modal */}
+      {addToPositionModal.isOpen && addToPositionModal.position && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-2xl w-full max-h-full overflow-y-auto">
+            <AddToPositionForm
+              ticker={addToPositionModal.ticker}
+              existingPosition={addToPositionModal.position}
+              onSubmit={handleAddToPositionSubmit}
+              onCancel={handleAddToPositionCancel}
+              isLoading={addingToPosition}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Position Details Modal */}
+      {positionDetailsModal.isOpen && positionDetailsModal.position && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="max-w-4xl w-full max-h-full overflow-y-auto">
+            <PositionDetails
+              position={positionDetailsModal.position}
+              onClose={handlePositionDetailsClose}
+            />
+          </div>
+        </div>
       )}
     </div>
   );

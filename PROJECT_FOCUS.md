@@ -1,7 +1,6 @@
-# Trade-Tracker MVP: Stock Market Focus
+# Z-Trade: Stock Market Focus
 
-## Project Overview
-Trade-Tracker MVP is a comprehensive web application designed to help traders track their stock trades, analyze performance against market benchmarks, and visualize trading data with technical indicators. The application focuses on **real-time stock market connections** and **performance benchmarking** without AI features.
+Z-Trade is a comprehensive web application designed to help traders track their stock trades, analyze performance against market benchmarks, and visualize trading data with technical indicators. The application focuses on **real-time stock market connections** and **performance benchmarking** without AI features.
 
 ## Core Features
 

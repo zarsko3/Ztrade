@@ -22,6 +22,37 @@ export interface TradeWithCalculations extends Trade {
   holdingPeriod?: number;
 }
 
+// New interfaces for position management
+export interface Position {
+  ticker: string;
+  totalQuantity: number;
+  averageEntryPrice: number;
+  totalInvestment: number;
+  totalFees: number;
+  isShort: boolean;
+  isOpen: boolean;
+  trades: TradeWithCalculations[];
+  currentValue?: number;
+  unrealizedPnL?: number;
+  unrealizedPnLPercentage?: number;
+}
+
+export interface AddToPositionRequest {
+  ticker: string;
+  entryDate: string;
+  entryPrice: number;
+  quantity: number;
+  fees?: number;
+  notes?: string;
+  tags?: string;
+}
+
+export interface AddToPositionResponse {
+  success: boolean;
+  position: Position;
+  message?: string;
+}
+
 export interface TradeListRequest {
   page?: number;
   limit?: number;
@@ -105,4 +136,14 @@ export interface TradeEntryFormProps {
   initialData?: TradeFormData;
   isLoading?: boolean;
   title?: string;
+}
+
+// New interface for Add to Position form
+export interface AddToPositionFormProps {
+  ticker: string;
+  existingPosition: Position;
+  onSubmit: (data: AddToPositionRequest) => Promise<void>;
+  onCancel: () => void;
+  className?: string;
+  isLoading?: boolean;
 } 

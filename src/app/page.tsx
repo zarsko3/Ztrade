@@ -21,7 +21,7 @@ export default function Home() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 flex items-center justify-center">
       <div className="text-center">
         <h1 className="text-4xl font-bold text-gray-900 dark:text-white mb-4">
-          Trade-Tracker
+          Welcome to Z-Trade
         </h1>
         <p className="text-xl text-gray-600 dark:text-gray-400 mb-8">
           Professional Trading Performance Analytics

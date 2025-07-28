@@ -20,8 +20,29 @@ export async function GET(request: NextRequest) {
       await unifiedMarketDataManager.initialize([symbol]);
     }
     
-    const marketData = unifiedMarketDataManager.getMarketData([symbol]);
-    const data = marketData[0];
+    let marketData = unifiedMarketDataManager.getMarketData([symbol]);
+    let data = marketData[0];
+    
+    // If symbol not found in current data, try to fetch it dynamically
+    if (!data) {
+      console.log(`Symbol ${symbol} not in current data, fetching dynamically...`);
+      try {
+        // Add symbol to tracked symbols and update data
+        await unifiedMarketDataManager.updateSymbols([...unifiedMarketDataManager.getAllMarketData().map(d => d.symbol), symbol]);
+        marketData = unifiedMarketDataManager.getMarketData([symbol]);
+        data = marketData[0];
+      } catch (error) {
+        console.error(`Error fetching data for ${symbol}:`, error);
+        return NextResponse.json(
+          {
+            status: 'error',
+            message: 'Symbol not found or no data available',
+            symbol: symbol
+          },
+          { status: 404 }
+        );
+      }
+    }
     
     if (!data) {
       return NextResponse.json(

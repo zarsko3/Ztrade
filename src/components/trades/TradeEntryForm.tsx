@@ -29,6 +29,8 @@ export function TradeEntryForm({
   const [investmentAmount, setInvestmentAmount] = useState<number>(0);
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
   const [loadingPrice, setLoadingPrice] = useState(false);
+  const [existingPosition, setExistingPosition] = useState<any>(null);
+  const [checkingPosition, setCheckingPosition] = useState(false);
 
   // Calculate initial investment amount when form data changes
   useEffect(() => {
@@ -38,10 +40,13 @@ export function TradeEntryForm({
     }
   }, [formData.entryPrice, formData.quantity]);
 
-  // Fetch current market price when ticker changes
+  // Fetch current market price and check position when ticker changes
   useEffect(() => {
     if (formData.ticker && formData.ticker.length >= 1) {
       fetchCurrentPrice(formData.ticker);
+      checkExistingPosition(formData.ticker);
+    } else {
+      setExistingPosition(null);
     }
   }, [formData.ticker]);
 
@@ -63,6 +68,28 @@ export function TradeEntryForm({
       console.error('Error fetching current price:', error);
     } finally {
       setLoadingPrice(false);
+    }
+  };
+
+  const checkExistingPosition = async (ticker: string) => {
+    try {
+      setCheckingPosition(true);
+      const response = await fetch(`/api/trades/position/${ticker}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.position) {
+          setExistingPosition(data.position);
+        } else {
+          setExistingPosition(null);
+        }
+      } else {
+        setExistingPosition(null);
+      }
+    } catch (error) {
+      console.error('Error checking existing position:', error);
+      setExistingPosition(null);
+    } finally {
+      setCheckingPosition(false);
     }
   };
 
@@ -248,6 +275,25 @@ export function TradeEntryForm({
             />
             {errors.ticker && (
               <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.ticker}</p>
+            )}
+            {existingPosition && (
+              <div className="mt-2 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                <div className="flex items-start space-x-2">
+                  <div className="flex-shrink-0">
+                    <svg className="w-5 h-5 text-yellow-400" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                      <strong>Existing position found:</strong> You already have an open position for {formData.ticker} with {existingPosition.totalQuantity.toFixed(4)} shares at an average price of ${existingPosition.averageEntryPrice.toFixed(2)}.
+                    </p>
+                    <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
+                      Consider using "Add to Position" instead of creating a new trade.
+                    </p>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
 

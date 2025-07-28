@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { useWebSocket } from '@/hooks/useWebSocket';
 
-import { EconomicNews } from '@/components/market/EconomicNews';
+
 import { TrendingUp, TrendingDown, DollarSign, Activity } from 'lucide-react';
 
 interface RealTimeDashboardProps {
@@ -126,10 +126,7 @@ export function RealTimeDashboard({
 
 
 
-      {/* Economic News */}
-      <div>
-        <EconomicNews />
-      </div>
+
 
 
     </div>

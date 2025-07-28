@@ -39,7 +39,7 @@ export default function SettingsPage() {
 
   useEffect(() => {
     // Load settings from localStorage
-    const savedSettings = localStorage.getItem('trade-tracker-settings');
+    const savedSettings = localStorage.getItem('z-trade-settings');
     if (savedSettings) {
       setSettings(JSON.parse(savedSettings));
     }
@@ -56,7 +56,7 @@ export default function SettingsPage() {
     setLoading(true);
     try {
       // Save to localStorage
-      localStorage.setItem('trade-tracker-settings', JSON.stringify(settings));
+      localStorage.setItem('z-trade-settings', JSON.stringify(settings));
       
       // Apply theme immediately
       if (settings.theme === 'dark') {

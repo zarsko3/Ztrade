@@ -157,18 +157,18 @@ class NewsService {
         id: 'fallback-1',
         title: 'Federal Reserve Signals Potential Rate Cut in September',
         summary: 'Fed officials indicate possible interest rate reduction as inflation cools, with markets pricing in 25-basis-point cut',
-        url: 'https://www.reuters.com/markets/us/fed-signals-potential-rate-cut-september-2024-07-26/',
+        url: 'https://www.cnbc.com/2024/07/26/federal-reserve-rate-cut-september-inflation.html',
         publishedAt: new Date(now.getTime() - 30 * 60 * 1000).toISOString(), // 30 minutes ago
-        source: 'Reuters',
+        source: 'CNBC',
         category: 'breaking'
       },
       {
         id: 'fallback-2',
         title: 'Tech Earnings Beat Expectations, Market Rally Continues',
         summary: 'Major tech companies report strong Q2 results, driving market gains and pushing indices to new highs',
-        url: 'https://www.bloomberg.com/news/articles/2024-07-26/tech-earnings-beat-expectations-market-rally-continues',
+        url: 'https://www.reuters.com/markets/us/tech-earnings-beat-expectations-market-rally-continues-2024-07-26/',
         publishedAt: new Date(now.getTime() - 2 * 60 * 60 * 1000).toISOString(), // 2 hours ago
-        source: 'Bloomberg',
+        source: 'Reuters',
         category: 'earnings'
       },
       {
@@ -182,20 +182,20 @@ class NewsService {
       },
       {
         id: 'fallback-4',
-        title: 'New Economic Stimulus Package Announced',
-        summary: 'Government unveils $500B infrastructure and jobs program to boost economic recovery',
-        url: 'https://www.wsj.com/articles/new-economic-stimulus-package-announced-2024-07-26',
+        title: 'S&P 500 Reaches New All-Time High',
+        summary: 'The benchmark index continues its upward trajectory, supported by strong corporate earnings and economic data',
+        url: 'https://www.bloomberg.com/news/articles/2024-07-26/sp500-reaches-new-all-time-high',
         publishedAt: new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
-        source: 'Wall Street Journal',
-        category: 'policy'
+        source: 'Bloomberg',
+        category: 'market'
       },
       {
         id: 'fallback-5',
-        title: 'Cryptocurrency Markets Show Signs of Recovery',
-        summary: 'Bitcoin and Ethereum gain momentum as institutional adoption increases',
-        url: 'https://www.cnbc.com/2024/07/26/cryptocurrency-markets-show-signs-of-recovery/',
+        title: 'Treasury Yields Decline Amid Economic Uncertainty',
+        summary: 'Bond yields fall as investors seek safe haven assets and Fed policy remains accommodative',
+        url: 'https://www.wsj.com/articles/treasury-yields-decline-amid-economic-uncertainty-2024-07-26',
         publishedAt: new Date(now.getTime() - 8 * 60 * 60 * 1000).toISOString(), // 8 hours ago
-        source: 'CNBC',
+        source: 'Wall Street Journal',
         category: 'market'
       },
       {

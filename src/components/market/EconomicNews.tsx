@@ -68,16 +68,41 @@ export function EconomicNews() {
 
   const handleNewsClick = (url: string) => {
     try {
-      // Validate URL before opening
-      const urlObj = new URL(url);
+      // Clean and validate the URL
+      let cleanUrl = url.trim();
+      
+      // Ensure URL has protocol
+      if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+        cleanUrl = 'https://' + cleanUrl;
+      }
+      
+      // Validate URL format
+      const urlObj = new URL(cleanUrl);
       if (urlObj.protocol !== 'http:' && urlObj.protocol !== 'https:') {
-        console.error('Invalid URL protocol:', url);
+        console.error('Invalid URL protocol:', cleanUrl);
         alert('Invalid article URL. Please try again later.');
         return;
       }
       
+      // Check if URL is from a known news source
+      const validDomains = [
+        'cnbc.com', 'reuters.com', 'bloomberg.com', 'marketwatch.com', 
+        'wsj.com', 'ft.com', 'yahoo.com', 'finance.yahoo.com',
+        'seekingalpha.com', 'investing.com', 'tradingview.com'
+      ];
+      
+      const domain = urlObj.hostname.toLowerCase();
+      const isValidDomain = validDomains.some(validDomain => 
+        domain.includes(validDomain) || domain.endsWith('.' + validDomain)
+      );
+      
+      if (!isValidDomain) {
+        console.warn('URL from unknown domain:', domain);
+        // Still allow opening, but log a warning
+      }
+      
       // Open in new tab with proper security attributes
-      const newWindow = window.open(url, '_blank', 'noopener,noreferrer');
+      const newWindow = window.open(cleanUrl, '_blank', 'noopener,noreferrer');
       
       // Check if popup was blocked
       if (!newWindow) {
@@ -87,9 +112,11 @@ export function EconomicNews() {
       
       // Add error handling for the opened window
       newWindow.onerror = () => {
-        console.error('Error loading article:', url);
+        console.error('Error loading article:', cleanUrl);
         alert('Unable to load article. The external site may be temporarily unavailable.');
       };
+      
+      console.log('Opening news article:', cleanUrl);
       
     } catch (error) {
       console.error('Error opening news article:', error);
@@ -217,8 +244,8 @@ export function EconomicNews() {
               </button>
             </div>
           ) : (
-            <div className="space-y-3">
-              {news.map((item, index) => (
+            <div className="max-h-96 overflow-y-auto space-y-3 pr-2">
+              {news.slice(0, 3).map((item, index) => (
                 <div
                   key={`${item.id}-${index}`}
                   onClick={() => handleNewsClick(item.url)}
@@ -260,12 +287,22 @@ export function EconomicNews() {
                             External
                           </span>
                           <ExternalLink className="w-4 h-4 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                          {!item.url.startsWith('http') && (
+                            <span className="text-xs text-yellow-600 dark:text-yellow-400 ml-1">
+                              (Demo)
+                            </span>
+                          )}
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               ))}
+              {news.length > 3 && (
+                <div className="text-center py-2 text-sm text-gray-500 dark:text-gray-400">
+                  Scroll to see {news.length - 3} more articles
+                </div>
+              )}
             </div>
           )}
         </div>

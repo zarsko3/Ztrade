@@ -1,10 +1,10 @@
-# Trade-Tracker Testing Guide
+# Z-Trade Testing Guide
 
-This document provides comprehensive testing instructions for the Trade-Tracker application.
+This document provides comprehensive testing instructions for the Z-Trade application.
 
-## 🧪 **Testing Overview**
+## Overview
 
-The Trade-Tracker application includes multiple layers of testing to ensure reliability and functionality:
+The Z-Trade application includes multiple layers of testing to ensure reliability and functionality:
 
 1. **System Tests** - API endpoint testing and system health checks
 2. **Component Tests** - React component functionality testing
@@ -449,4 +449,4 @@ Target performance metrics:
 
 ---
 
-This testing guide ensures comprehensive validation of the Trade-Tracker application's functionality, performance, and reliability. 
+This testing guide ensures comprehensive validation of the Z-Trade application's functionality, performance, and reliability. 

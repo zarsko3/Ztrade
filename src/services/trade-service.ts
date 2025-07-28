@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { TradeWithCalculations, TradeListRequest, TradeListResponse, CreateTradeRequest } from '@/types/trade';
+import { TradeWithCalculations, TradeListRequest, TradeListResponse, CreateTradeRequest, Position, AddToPositionRequest } from '@/types/trade';
 
 export class TradeService {
   private prisma: PrismaClient;
@@ -120,6 +120,111 @@ export class TradeService {
   }
 
   /**
+   * Get position for a specific ticker
+   */
+  async getPosition(ticker: string): Promise<Position | null> {
+    const trades = await this.prisma.trade.findMany({
+      where: { 
+        ticker: ticker.toUpperCase(),
+        exitDate: null // Only open trades
+      },
+      orderBy: { entryDate: 'asc' },
+      include: {
+        performance: true
+      }
+    });
+
+    if (trades.length === 0) {
+      return null;
+    }
+
+    // Calculate position metrics
+    const totalQuantity = trades.reduce((sum, trade) => sum + trade.quantity, 0);
+    const totalInvestment = trades.reduce((sum, trade) => sum + (trade.entryPrice * trade.quantity), 0);
+    const totalFees = trades.reduce((sum, trade) => sum + (trade.fees || 0), 0);
+    const averageEntryPrice = totalInvestment / totalQuantity;
+    const isShort = trades[0].isShort; // All trades in a position should have the same direction
+
+    // Calculate current value and unrealized P&L
+    let currentValue = 0;
+    let unrealizedPnL = 0;
+    let unrealizedPnLPercentage = 0;
+
+    try {
+      // Fetch current market price
+      const response = await fetch(`/api/market-data/quote?symbol=${ticker.toUpperCase()}`);
+      if (response.ok) {
+        const data = await response.json();
+        if (data.status === 'success' && data.data) {
+          const currentPrice = data.data.price;
+          currentValue = totalQuantity * currentPrice;
+          
+          if (isShort) {
+            unrealizedPnL = totalInvestment - currentValue - totalFees;
+          } else {
+            unrealizedPnL = currentValue - totalInvestment - totalFees;
+          }
+          
+          unrealizedPnLPercentage = (unrealizedPnL / totalInvestment) * 100;
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching current price for position:', error);
+    }
+
+    const tradesWithCalculations = trades.map(trade => this.calculateTradeFields(trade));
+
+    return {
+      ticker: ticker.toUpperCase(),
+      totalQuantity,
+      averageEntryPrice,
+      totalInvestment,
+      totalFees,
+      isShort,
+      isOpen: true,
+      trades: tradesWithCalculations,
+      currentValue,
+      unrealizedPnL,
+      unrealizedPnLPercentage
+    };
+  }
+
+  /**
+   * Check if a position exists for a ticker
+   */
+  async hasOpenPosition(ticker: string): Promise<boolean> {
+    const count = await this.prisma.trade.count({
+      where: { 
+        ticker: ticker.toUpperCase(),
+        exitDate: null
+      }
+    });
+    return count > 0;
+  }
+
+  /**
+   * Add to an existing position
+   */
+  async addToPosition(data: AddToPositionRequest): Promise<Position> {
+    // Create the new trade
+    const newTrade = await this.createTrade({
+      ...data,
+      ticker: data.ticker.toUpperCase(),
+      isShort: false, // Assuming we're adding to a long position
+      exitDate: undefined,
+      exitPrice: undefined
+    });
+
+    // Get the updated position
+    const position = await this.getPosition(data.ticker);
+    if (!position) {
+      throw new Error('Failed to retrieve updated position');
+    }
+
+    return position;
+  }
+
+  /**
    * Calculate additional fields for a trade
    */
   private calculateTradeFields(trade: any): TradeWithCalculations {
@@ -160,67 +265,25 @@ export class TradeService {
    * Create a new trade
    */
   async createTrade(data: CreateTradeRequest): Promise<TradeWithCalculations> {
-    try {
-      console.log('TradeService.createTrade received data:', data);
-      
-      // Validate required fields
-      if (!data.ticker || !data.entryDate || !data.entryPrice || !data.quantity) {
-        throw new Error('Missing required fields: ticker, entryDate, entryPrice, quantity');
-      }
-
-      // Validate numeric fields
-      if (data.entryPrice <= 0 || data.quantity <= 0) {
-        throw new Error('Entry price and quantity must be positive numbers');
-      }
-
-      // Validate dates
-      const entryDate = new Date(data.entryDate);
-      if (isNaN(entryDate.getTime())) {
-        throw new Error('Invalid entry date format');
-      }
-
-      // Validate exit data if provided
-      if (data.exitDate && data.exitPrice) {
-        const exitDate = new Date(data.exitDate);
-        if (isNaN(exitDate.getTime())) {
-          throw new Error('Invalid exit date format');
-        }
-        if (data.exitPrice <= 0) {
-          throw new Error('Exit price must be a positive number');
-        }
-        if (exitDate < entryDate) {
-          throw new Error('Exit date cannot be before entry date');
-        }
-      }
-
-      // Create trade in database
-      const tradeData = {
+    const trade = await this.prisma.trade.create({
+      data: {
         ticker: data.ticker.toUpperCase(),
-        entryDate: entryDate,
+        entryDate: new Date(data.entryDate),
         entryPrice: data.entryPrice,
         quantity: data.quantity,
         isShort: data.isShort,
         fees: data.fees || 0,
-        notes: data.notes || null,
-        tags: data.tags || null,
+        notes: data.notes || '',
+        tags: data.tags || '',
         exitDate: data.exitDate ? new Date(data.exitDate) : null,
-        exitPrice: data.exitPrice || null,
-      };
-      
-      console.log('TradeService creating trade with data:', tradeData);
-      
-      const trade = await this.prisma.trade.create({
-        data: tradeData,
-      });
-      
-      console.log('TradeService created trade:', trade);
+        exitPrice: data.exitPrice || null
+      },
+      include: {
+        performance: true
+      }
+    });
 
-      // Calculate additional fields
-      return this.calculateTradeFields(trade);
-    } catch (error) {
-      console.error('Error creating trade:', error);
-      throw error;
-    }
+    return this.calculateTradeFields(trade);
   }
 
   /**

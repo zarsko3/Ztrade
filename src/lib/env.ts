@@ -1,7 +1,7 @@
 // src/lib/env.ts
 
 export const env = {
-  appName: process.env.NEXT_PUBLIC_APP_NAME || 'Trade-Tracker MVP',
+  appName: process.env.NEXT_PUBLIC_APP_NAME || 'Z-Trade',
   apiUrl: process.env.NEXT_PUBLIC_API_URL || '',
   nodeEnv: process.env.NODE_ENV || 'development',
   isProduction: process.env.NODE_ENV === 'production',
