@@ -240,32 +240,7 @@ export function Sidebar() {
               )}
             </div>
 
-            {/* Additional Navigation Items */}
-            <div className="space-y-1">
-              {navigation.map((item) => {
-                const isActive = pathname === item.href;
-                return (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className={`
-                      group flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200
-                      ${isActive 
-                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300' 
-                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
-                      }
-                    `}
-                    onClick={() => setIsMobileMenuOpen(false)}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <item.icon className={`w-4 h-4 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`} />
-                      <span>{item.name}</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
-                  </Link>
-                );
-              })}
-            </div>
+            {/* Additional Navigation Items - Removed from here, moved to bottom as icons */}
           </nav>
 
           {/* Bottom Section */}
@@ -289,8 +264,32 @@ export function Sidebar() {
               </div>
               <ChevronRight className="w-4 h-4 text-gray-400 dark:text-gray-500" />
             </button>
-            
+          </div>
 
+          {/* Export and Settings Icons - Very Bottom */}
+          <div className="mt-auto p-4 border-t border-gray-200 dark:border-gray-700">
+            <div className="flex items-center justify-center space-x-2">
+              {navigation.map((item) => {
+                const isActive = pathname === item.href;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`
+                      p-2.5 rounded-lg transition-all duration-200 hover:scale-105
+                      ${isActive 
+                        ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300' 
+                        : 'text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white'
+                      }
+                    `}
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    title={item.name}
+                  >
+                    <item.icon className={`w-5 h-5 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-gray-400 dark:text-gray-500'}`} />
+                  </Link>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

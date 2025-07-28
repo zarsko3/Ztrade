@@ -138,6 +138,34 @@ class UnifiedMarketDataManager {
   }
 
   /**
+   * Get data for a specific symbol, fetching it if not available
+   */
+  async getSymbolData(symbol: string): Promise<UnifiedMarketData | null> {
+    // Check if we already have the data
+    let data = this.currentData.get(symbol);
+    
+    if (data) {
+      return data;
+    }
+
+    // If not available, try to fetch it
+    console.log(`Symbol ${symbol} not in current data, fetching...`);
+    try {
+      // Add symbol to tracked symbols
+      const currentSymbols = Array.from(this.currentData.keys());
+      const updatedSymbols = [...new Set([...currentSymbols, symbol])];
+      await this.updateSymbols(updatedSymbols);
+      
+      // Get the data again
+      data = this.currentData.get(symbol);
+      return data || null;
+    } catch (error) {
+      console.error(`Error fetching data for ${symbol}:`, error);
+      return null;
+    }
+  }
+
+  /**
    * Get all current market data
    */
   getAllMarketData(): UnifiedMarketData[] {
@@ -153,18 +181,55 @@ class UnifiedMarketDataManager {
       return;
     }
 
-    // Clear current data for symbols no longer being tracked
+    // Get current symbols
     const currentSymbols = new Set(this.currentData.keys());
     const newSymbols = new Set(symbols);
     
-    for (const symbol of currentSymbols) {
-      if (!newSymbols.has(symbol)) {
-        this.currentData.delete(symbol);
-      }
+    // Find symbols to remove
+    const symbolsToRemove = Array.from(currentSymbols).filter(symbol => !newSymbols.has(symbol));
+    
+    // Find symbols to add
+    const symbolsToAdd = Array.from(newSymbols).filter(symbol => !currentSymbols.has(symbol));
+    
+    // Remove symbols no longer being tracked
+    for (const symbol of symbolsToRemove) {
+      this.currentData.delete(symbol);
     }
 
-    // Update data for new symbols
-    await this.updateMarketData(symbols);
+    // If we have new symbols to add, fetch their data immediately
+    if (symbolsToAdd.length > 0) {
+      console.log(`Adding new symbols: ${symbolsToAdd.join(', ')}`);
+      try {
+        // Fetch data for new symbols only
+        const optimizedData = await marketDataOptimizer.getMarketData(symbolsToAdd);
+        
+        // Convert to unified format and add to current data
+        const unifiedData: UnifiedMarketData[] = optimizedData.map(data => ({
+          symbol: data.symbol,
+          price: data.price,
+          change: data.change,
+          changePercent: data.changePercent,
+          volume: data.volume,
+          timestamp: data.timestamp,
+          lastUpdated: data.lastUpdated,
+          dataQuality: data.dataQuality,
+          source: data.source
+        }));
+
+        // Update current data with new symbols
+        unifiedData.forEach(data => {
+          this.currentData.set(data.symbol, data);
+        });
+
+        // Notify subscribers of new data
+        this.notifySubscribers(unifiedData);
+        
+        console.log(`Added data for ${unifiedData.length} new symbols`);
+      } catch (error) {
+        console.error('Error adding new symbols:', error);
+        // Even if there's an error, we should still have fallback data from the optimizer
+      }
+    }
   }
 
   /**
