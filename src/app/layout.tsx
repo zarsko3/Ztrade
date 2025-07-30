@@ -3,8 +3,8 @@ import "./globals.css";
 import { Sidebar } from "@/components/layouts/Sidebar";
 import { NotificationProvider } from "@/components/NotificationSystem";
 import { ThemeProvider } from "@/lib/theme-context";
-import { StagewiseToolbar } from "@stagewise/toolbar-next";
-import ReactPlugin from "@stagewise-plugins/react";
+// import { StagewiseToolbar } from "@stagewise/toolbar-next";
+// import ReactPlugin from "@stagewise-plugins/react";
 
 export const metadata: Metadata = {
   title: "Trade - Professional Trading Dashboard",
@@ -32,11 +32,11 @@ export default function RootLayout({
                 </div>
               </main>
             </div>
-            <StagewiseToolbar
+            {/* <StagewiseToolbar
               config={{
                 plugins: [ReactPlugin],
               }}
-            />
+            /> */}
           </NotificationProvider>
         </ThemeProvider>
       </body>

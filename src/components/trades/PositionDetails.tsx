@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Position, TradeWithCalculations } from '@/types/trade';
 import { X, TrendingUp, TrendingDown, DollarSign, Calendar, Hash, FileText } from 'lucide-react';
+import { StockLogoWithText } from '@/components/ui/stock-logo';
 
 interface PositionDetailsProps {
   position: Position;
@@ -90,12 +91,21 @@ export function PositionDetails({ position, onClose, className = '' }: PositionD
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Position Details: {position.ticker}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            {position.isShort ? 'Short' : 'Long'} Position • {position.trades.length} entries
-          </p>
+          <div className="flex items-center space-x-3">
+            <StockLogoWithText 
+              ticker={position.ticker} 
+              size="lg" 
+              className="text-xl font-semibold text-gray-900 dark:text-white"
+            />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Position Details
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                {position.isShort ? 'Short' : 'Long'} Position • {position.trades.length} entries
+              </p>
+            </div>
+          </div>
         </div>
         <button
           onClick={onClose}

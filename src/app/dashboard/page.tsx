@@ -1,34 +1,20 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+
 import { 
   TrendingDown, 
-  Activity,
-  Edit3,
   ChevronLeft,
   ChevronRight,
   FileText,
-  MoreVertical,
-  TrendingUp,
-  TrendingDown as TrendingDownIcon,
-  Wallet,
-  TrendingUp as TrendingUpIcon
+  TrendingUp
 } from 'lucide-react';
 import { Trade } from '@/types/trade';
 import { FearGreedService, FearGreedData } from '@/services/fear-greed-service';
 import { MarketDataService } from '@/services/market-data-service';
+import { StockLogoWithText } from '@/components/ui/stock-logo';
 
-interface DashboardStats {
-  totalTrades: number;
-  totalPnL: number;
-  winRate: number;
-  averageHoldingPeriod: number;
-  bestTrade: number;
-  worstTrade: number;
-  totalVolume: number;
-  averageTradeSize: number;
-}
+
 
 interface DailyTradeData {
   date: string;
@@ -41,31 +27,25 @@ interface DailyTradeData {
   isTradingDay: boolean;
 }
 
-interface HourlyData {
-  time: string;
-  pnl: number;
-  percentage: number;
-}
+
 
 export default function DashboardPage() {
-  const router = useRouter();
   const [trades, setTrades] = useState<Trade[]>([]);
-  const [stats, setStats] = useState<DashboardStats | null>(null);
   const [dailyData, setDailyData] = useState<DailyTradeData[]>([]);
-  const [hourlyData, setHourlyData] = useState<HourlyData[]>([]);
   const [selectedPeriod, setSelectedPeriod] = useState('30');
-  const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fearGreedData, setFearGreedData] = useState<FearGreedData | null>(null);
   const [currentPrices, setCurrentPrices] = useState<Record<string, number>>({});
   const [priceLoading, setPriceLoading] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
 
   // Handle period change
   const handlePeriodChange = (period: string) => {
     setSelectedPeriod(period);
-    // Refresh data with new period
-    setTimeout(() => fetchDashboardData(), 100);
+    // Regenerate daily data with new period
+    const updatedDailyData = generateDailyData(trades);
+    setDailyData(updatedDailyData);
   };
 
   // Calculate date range based on selected period
@@ -130,7 +110,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     fetchDashboardData();
-  }, [currentDate]);
+  }, []);
 
   // Auto-scroll to today's date when data loads
   useEffect(() => {
@@ -194,14 +174,10 @@ export default function DashboardPage() {
       const trades = tradesData.trades || [];
       setTrades(trades);
 
-      const stats = calculateDashboardStats(trades);
-      setStats(stats);
 
-      const dailyData = generateDailyData(trades, selectedPeriod);
+
+      const dailyData = generateDailyData(trades);
       setDailyData(dailyData);
-
-      const hourlyData = generateHourlyData(trades);
-      setHourlyData(hourlyData);
 
       // Fetch current prices for open trades
       const openTrades = trades.filter((trade: Trade) => !trade.exitDate || !trade.exitPrice);
@@ -215,6 +191,7 @@ export default function DashboardPage() {
         console.error('Error fetching Fear & Greed Index:', error);
       }
 
+      setLastUpdated(new Date());
       setLoading(false);
     } catch (err) {
       console.error('Error fetching dashboard data:', err);
@@ -223,72 +200,9 @@ export default function DashboardPage() {
     }
   };
 
-  const calculateDashboardStats = (trades: Trade[]): DashboardStats => {
-    if (trades.length === 0) {
-      return {
-        totalTrades: 0,
-        totalPnL: 0,
-        winRate: 0,
-        averageHoldingPeriod: 0,
-        bestTrade: 0,
-        worstTrade: 0,
-        totalVolume: 0,
-        averageTradeSize: 0
-      };
-    }
 
-    const closedTrades = trades.filter(trade => trade.exitDate && trade.exitPrice);
-    const totalPnL = closedTrades.reduce((sum, trade) => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return sum + pnl;
-    }, 0);
 
-    const winningTrades = closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl > 0;
-    });
-
-    const winRate = closedTrades.length > 0 ? (winningTrades.length / closedTrades.length) * 100 : 0;
-
-    const holdingPeriods = closedTrades.map(trade => {
-      const entryDate = typeof trade.entryDate === 'string' ? new Date(trade.entryDate) : trade.entryDate;
-      const exitDate = typeof trade.exitDate === 'string' ? new Date(trade.exitDate!) : trade.exitDate!;
-      return Math.ceil((exitDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
-    });
-
-    const averageHoldingPeriod = holdingPeriods.length > 0 
-      ? holdingPeriods.reduce((sum, days) => sum + days, 0) / holdingPeriods.length 
-      : 0;
-
-    const tradePnLs = closedTrades.map(trade => {
-      return trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-    });
-
-    const bestTrade = tradePnLs.length > 0 ? Math.max(...tradePnLs) : 0;
-    const worstTrade = tradePnLs.length > 0 ? Math.min(...tradePnLs) : 0;
-
-    const totalVolume = trades.reduce((sum, trade) => sum + (trade.entryPrice * trade.quantity), 0);
-    const averageTradeSize = trades.length > 0 ? totalVolume / trades.length : 0;
-
-    return {
-      totalTrades: trades.length,
-      totalPnL,
-      winRate,
-      averageHoldingPeriod,
-      bestTrade,
-      worstTrade,
-      totalVolume,
-      averageTradeSize
-    };
-  };
-
-  const generateDailyData = (trades: Trade[], period: string): DailyTradeData[] => {
+  const generateDailyData = (trades: Trade[]): DailyTradeData[] => {
     const dailyData: DailyTradeData[] = [];
     const { startDate, endDate } = getTradeDateRange(trades);
     const daysDiff = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -346,131 +260,9 @@ export default function DashboardPage() {
     return dailyData;
   };
 
-  const generateHourlyData = (trades: Trade[]): HourlyData[] => {
-    const hourlyData: HourlyData[] = [];
-    
-    for (let hour = 0; hour < 24; hour++) {
-      const hourTrades = trades.filter(trade => {
-        const tradeDate = typeof trade.entryDate === 'string' ? new Date(trade.entryDate) : trade.entryDate;
-        return tradeDate.getHours() === hour;
-      });
-      
-      const hourPnL = hourTrades.reduce((sum, trade) => {
-        if (trade.exitDate && trade.exitPrice) {
-          const pnl = trade.isShort 
-            ? (trade.entryPrice - trade.exitPrice) * trade.quantity
-            : (trade.exitPrice - trade.entryPrice) * trade.quantity;
-          return sum + pnl;
-        }
-        return sum;
-      }, 0);
-      
-      const percentage = trades.length > 0 ? (hourTrades.length / trades.length) * 100 : 0;
-      
-      hourlyData.push({
-        time: `${hour.toString().padStart(2, '0')}:00`,
-        pnl: hourPnL,
-        percentage: percentage
-      });
-    }
-    
-    return hourlyData.slice(0, 8); // Show first 8 hours
-  };
 
-  const calculateProfitFactor = (trades: Trade[]): number => {
-    const closedTrades = trades.filter(trade => trade.exitDate && trade.exitPrice);
-    const winningTrades = closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl > 0;
-    });
-    
-    const losingTrades = closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl < 0;
-    });
-    
-    const totalWins = winningTrades.reduce((sum, trade) => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return sum + pnl;
-    }, 0);
-    
-    const totalLosses = losingTrades.reduce((sum, trade) => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return sum + Math.abs(pnl);
-    }, 0);
-    
-    return totalLosses > 0 ? totalWins / totalLosses : 0;
-  };
 
-  const calculateWinningTrades = (trades: Trade[]): number => {
-    const closedTrades = trades.filter(trade => trade.exitDate && trade.exitPrice);
-    return closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl > 0;
-    }).length;
-  };
 
-  const calculateLosingTrades = (trades: Trade[]): number => {
-    const closedTrades = trades.filter(trade => trade.exitDate && trade.exitPrice);
-    return closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl < 0;
-    }).length;
-  };
-
-  const calculateAverageWinningTrade = (trades: Trade[]): number => {
-    const closedTrades = trades.filter(trade => trade.exitDate && trade.exitPrice);
-    const winningTrades = closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl > 0;
-    });
-    
-    if (winningTrades.length === 0) return 0;
-    
-    const totalWins = winningTrades.reduce((sum, trade) => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return sum + pnl;
-    }, 0);
-    
-    return totalWins / winningTrades.length;
-  };
-
-  const calculateAverageLosingTrade = (trades: Trade[]): number => {
-    const closedTrades = trades.filter(trade => trade.exitDate && trade.exitPrice);
-    const losingTrades = closedTrades.filter(trade => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return pnl < 0;
-    });
-    
-    if (losingTrades.length === 0) return 0;
-    
-    const totalLosses = losingTrades.reduce((sum, trade) => {
-      const pnl = trade.isShort 
-        ? (trade.entryPrice - trade.exitPrice!) * trade.quantity
-        : (trade.exitPrice! - trade.entryPrice) * trade.quantity;
-      return sum + Math.abs(pnl);
-    }, 0);
-    
-    return totalLosses / losingTrades.length;
-  };
 
   const formatCurrency = (amount: number): string => {
     if (amount >= 1000) {
@@ -479,9 +271,7 @@ export default function DashboardPage() {
     return `$${amount.toFixed(2)}`;
   };
 
-  const generateTrendData = (): number[] => {
-    return Array.from({ length: 10 }, () => Math.random() * 100 + 50);
-  };
+
 
   const calculateStockReturn = (trade: Trade): number => {
     if (!trade.exitDate || !trade.exitPrice) {
@@ -572,162 +362,103 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       <div className="max-w-7xl mx-auto p-4">
-        {/* Header Bar */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-3 mb-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-4">
-              <h1 className="text-xl font-bold text-gray-900 dark:text-white">Dashboard</h1>
+        {/* Simple Dashboard Title */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+            Dashboard
+          </h1>
+        </div>
+
+        {/* Enhanced Mini Calendar Slider */}
+        <div className="mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            <div className="flex items-center space-x-2">
+              <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+              <h2 className="text-base sm:text-lg font-bold text-gray-900 dark:text-white">
+                {new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}
+              </h2>
             </div>
-            
-            <div className="flex items-center space-x-4">
-              {/* Period Selector */}
-              <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
-                {['30', '60', '90'].map((period) => (
-                  <button
-                    key={period}
-                    onClick={() => handlePeriodChange(period)}
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                      selectedPeriod === period
-                        ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
-                    }`}
-                  >
-                    {period === 'Custom' ? period : `${period} days`}
-                  </button>
-                ))}
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              <div className="px-2 sm:px-3 py-1 bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 rounded-full text-xs sm:text-sm font-medium">
+                Today: {new Date().getDate()}
               </div>
-              
-              {/* Navigation Controls */}
-              <div className="flex items-center space-x-2">
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 text-gray-900 dark:text-white rounded-md text-sm font-medium">
-                  Today
-                </button>
-                <button className="p-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
+              <div className="px-2 sm:px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full text-xs">
+                Last updated: {lastUpdated.toLocaleString()}
               </div>
             </div>
           </div>
-        </div>
 
-        {/* Daily Performance Section */}
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">
-            {trades.length > 0 ? (
-              `${getTradeDateRange(trades).startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} - ${getTradeDateRange(trades).endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
-            ) : (
-              `${getDateRange(selectedPeriod).startDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })} - ${getDateRange(selectedPeriod).endDate.toLocaleDateString('en-US', { month: 'short', year: 'numeric' })}`
-            )}
-          </h2>
-          <div className="flex space-x-3 overflow-x-auto pb-2" id="daily-data-container">
-            {dailyData.map((day, index) => (
-              <div
-                key={index}
-                className={`flex-shrink-0 w-20 rounded-xl shadow-sm border p-2 transition-all duration-200 relative ${
-                  day.isToday 
-                    ? 'bg-blue-50 dark:bg-blue-900/20 border-blue-300 dark:border-blue-600 shadow-md scale-105' 
-                    : day.isTradingDay 
-                      ? 'bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700' 
-                      : 'bg-gray-50 dark:bg-gray-700 border-gray-100 dark:border-gray-600'
-                } ${
-                  !day.isActive ? 'opacity-50' : ''
-                }`}
-              >
-                {/* Performance Arrow Indicator */}
-                {day.isToday && (
-                  console.log('Rendering arrow indicator for today:', { dayPnL: day.pnl, isToday: day.isToday }),
-                  <div className="absolute -top-3 left-1/2 transform -translate-x-1/2 z-10">
-                    <div className={`p-1 rounded-full shadow-lg ${
-                      day.pnl > 0 
-                        ? 'bg-green-500 text-white' 
-                        : day.pnl < 0 
-                          ? 'bg-red-500 text-white' 
-                          : 'bg-gray-500 text-white'
-                    }`}>
-                      {day.pnl > 0 ? (
-                        <TrendingUp className="w-4 h-4" />
-                      ) : day.pnl < 0 ? (
-                        <TrendingDown className="w-4 h-4" />
-                      ) : (
-                        <div className="w-4 h-4 flex items-center justify-center">
-                          <div className="w-1 h-1 bg-white rounded-full"></div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <div className={`text-xs font-medium ${
-                      day.isToday 
-                        ? 'text-blue-700 dark:text-blue-300 font-bold' 
-                        : day.isTradingDay 
-                          ? 'text-gray-900 dark:text-white' 
-                          : 'text-gray-500 dark:text-gray-400'
-                    }`}>
-                      {day.dayNumber} {day.dayOfWeek}
-                      {day.isToday && <span className="ml-1 text-blue-500">●</span>}
-                    </div>
-                  </div>
-                  <FileText className={`w-4 h-4 ${
+          {/* Enhanced Horizontal Day Slider */}
+          <div className="bg-gradient-to-r from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 rounded-xl shadow-lg border border-gray-200 dark:border-gray-600 p-5 sm:p-6 hover:shadow-xl transition-all duration-300 min-h-[6.5rem] sm:min-h-[7rem]">
+            <div className="flex space-x-4 sm:space-x-5 overflow-x-auto scrollbar-hide h-full items-center mt-2">
+              {dailyData.slice(0, Math.min(parseInt(selectedPeriod), dailyData.length)).map((day, index) => (
+                <div
+                  key={index}
+                  className={`flex-shrink-0 w-12 h-12 sm:w-14 sm:h-14 rounded-lg border-2 transition-all duration-300 transform hover:scale-110 cursor-pointer ${
                     day.isToday 
-                      ? 'text-blue-500' 
-                      : day.isTradingDay 
-                        ? 'text-gray-400' 
-                        : 'text-gray-300'
-                  }`} />
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-600 border-blue-400 text-white shadow-lg ring-2 ring-blue-200' 
+                      : day.trades > 0
+                        ? 'bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 border-green-300 dark:border-green-600 hover:shadow-md'
+                        : day.isTradingDay
+                          ? 'bg-gradient-to-br from-gray-50 to-slate-50 dark:from-gray-700 dark:to-slate-700 border-gray-300 dark:border-gray-500 hover:shadow-md'
+                          : 'bg-transparent border-transparent'
+                  }`}
+                >
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <div className={`text-xs font-bold leading-none ${
+                      day.isToday 
+                        ? 'text-white' 
+                        : day.trades > 0
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-gray-600 dark:text-gray-400'
+                    }`}>
+                      {day.dayNumber}
+                    </div>
+                    {day.trades > 0 && (
+                      <div className={`text-xs leading-none ${
+                        day.isToday 
+                          ? 'text-white' 
+                          : 'text-green-600 dark:text-green-400'
+                      }`}>
+                        {day.trades}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className={`text-sm font-bold ${
-                  day.pnl > 0 ? 'text-green-600' : day.pnl < 0 ? 'text-red-600' : 'text-gray-900 dark:text-white'
-                }`}>
-                  {day.pnl > 0 ? '+' : ''}{formatCurrency(day.pnl)}
-                </div>
-                <div className={`text-xs mt-1 ${
-                  day.isToday 
-                    ? 'text-blue-600 dark:text-blue-400' 
-                    : day.isTradingDay 
-                      ? 'text-gray-500 dark:text-gray-400' 
-                      : 'text-gray-400 dark:text-gray-500'
-                }`}>
-                  {day.trades} trades
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Fear & Greed Index Card */}
+        {/* Enhanced Fear & Greed Index Card */}
         {fearGreedData && (
-          <div className="mb-4">
-            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Market Sentiment</h2>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  Last updated: {new Date(fearGreedData.timestamp).toLocaleString()}
+          <div className="mb-6">
+            <div className="bg-gradient-to-br from-white via-blue-50 to-indigo-50 dark:from-gray-800 dark:via-gray-700 dark:to-gray-600 rounded-2xl shadow-xl border border-blue-200 dark:border-gray-600 p-6 transform hover:scale-[1.02] transition-all duration-300">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Market Sentiment</h2>
+                <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full text-xs">
+                  Last updated: {lastUpdated.toLocaleString()}
                 </div>
               </div>
               
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Current Index */}
-                <div className="text-center">
-                  <div className="text-4xl mb-2">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Enhanced Current Index */}
+                <div className="text-center p-4 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                  <div className="text-5xl mb-3 transform hover:scale-110 transition-transform duration-200">
                     {FearGreedService.getSentimentIcon(fearGreedData.value)}
                   </div>
-                  <div className="text-3xl font-bold mb-1" style={{ color: FearGreedService.getSentimentColor(fearGreedData.value) }}>
+                  <div className="text-4xl font-bold mb-2" style={{ color: FearGreedService.getSentimentColor(fearGreedData.value) }}>
                     {fearGreedData.value}
                   </div>
-                  <div className="text-sm text-gray-600 dark:text-gray-400">
+                  <div className="text-sm font-medium text-gray-700 dark:text-gray-300">
                     {fearGreedData.classification}
                   </div>
                 </div>
                 
-                {/* Change from Previous */}
-                <div className="text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Change from Previous</div>
-                  <div className={`text-xl font-semibold ${
+                {/* Enhanced Change from Previous */}
+                <div className="text-center p-4 bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl border border-green-200 dark:border-green-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 font-medium">Change from Previous</div>
+                  <div className={`text-2xl font-bold mb-2 ${
                     fearGreedData.value > fearGreedData.previousValue 
                       ? 'text-green-600' 
                       : fearGreedData.value < fearGreedData.previousValue 
@@ -742,34 +473,34 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 
-                {/* Trading Recommendation */}
-                <div className="text-center">
-                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-2">Trading Advice</div>
-                  <div className="text-sm font-medium text-gray-900 dark:text-white">
+                {/* Enhanced Trading Recommendation */}
+                <div className="text-center p-4 bg-gradient-to-br from-orange-50 to-amber-50 dark:from-orange-900/20 dark:to-amber-900/20 rounded-xl border border-orange-200 dark:border-orange-700">
+                  <div className="text-sm text-gray-600 dark:text-gray-400 mb-3 font-medium">Trading Advice</div>
+                  <div className="text-sm font-semibold text-gray-900 dark:text-white leading-relaxed">
                     {FearGreedService.getTradingRecommendation(fearGreedData.value)}
                   </div>
                 </div>
               </div>
               
-              {/* Sentiment Scale */}
-              <div className="mt-4">
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-2">
+              {/* Enhanced Sentiment Scale */}
+              <div className="mt-6">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mb-3 font-medium">
                   <span>Extreme Fear</span>
                   <span>Fear</span>
                   <span>Neutral</span>
                   <span>Greed</span>
                   <span>Extreme Greed</span>
                 </div>
-                <div className="relative h-3 bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 to-emerald-500 rounded-full">
+                <div className="relative h-4 bg-gradient-to-r from-red-500 via-orange-500 via-yellow-500 via-green-500 to-emerald-500 rounded-full shadow-inner">
                   <div 
-                    className="absolute top-0 w-4 h-4 bg-white border-2 border-gray-300 rounded-full transform -translate-y-0.5 shadow-sm"
+                    className="absolute top-0 w-6 h-6 bg-white border-2 border-gray-300 rounded-full transform -translate-y-1 shadow-lg animate-pulse"
                     style={{ 
                       left: `${fearGreedData.value}%`,
-                      transform: 'translateX(-50%) translateY(-2px)'
+                      transform: 'translateX(-50%) translateY(-4px)'
                     }}
                   ></div>
                 </div>
-                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-1">
+                <div className="flex justify-between text-xs text-gray-500 dark:text-gray-400 mt-2 font-medium">
                   <span>0</span>
                   <span>25</span>
                   <span>45</span>
@@ -782,13 +513,19 @@ export default function DashboardPage() {
           </div>
         )}
 
-        {/* Recent Shared Trades */}
-        <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-3">Your recent shared trades</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Enhanced Recent Shared Trades */}
+        <div className="mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center space-x-3">
+              <div className="w-1 h-8 bg-gradient-to-b from-blue-500 to-indigo-500 rounded-full"></div>
+              <h2 className="text-xl font-bold text-gray-900 dark:text-white">Your Recent Trades</h2>
+            </div>
+            <div className="px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded-full text-xs">
+              Last updated: {lastUpdated.toLocaleString()}
+            </div>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {trades.slice(0, 3).map((trade, index) => {
-              const trendData = generateTrendData();
-              const isPositive = trendData[trendData.length - 1] > trendData[0];
               const stockReturn = calculateStockReturn(trade);
               const sp500Return = getSP500Comparison(trade);
               const outperformance = stockReturn - sp500Return;
@@ -796,68 +533,80 @@ export default function DashboardPage() {
               const isOpen = !trade.exitDate || !trade.exitPrice;
               
               return (
-                <div key={index} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-4">
-                  <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
-                    {new Date(trade.entryDate).toLocaleDateString('en-US', {
-                      month: 'short',
-                      day: 'numeric',
-                      year: 'numeric',
-                      hour: '2-digit',
-                      minute: '2-digit'
-                    })}
-                  </div>
-                  <div className="text-xl font-bold text-gray-900 dark:text-white mb-2">
-                    {trade.ticker}
+                <div key={index} className="group bg-gradient-to-br from-white to-gray-50 dark:from-gray-800 dark:to-gray-700 rounded-2xl shadow-lg border border-gray-200 dark:border-gray-600 p-6 transform hover:scale-105 hover:shadow-xl transition-all duration-300 cursor-pointer">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="text-xs text-gray-500 dark:text-gray-400 bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded-full">
+                      {new Date(trade.entryDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </div>
+                    <div className={`w-3 h-3 rounded-full ${
+                      isOpen ? 'bg-yellow-400 animate-pulse' : 'bg-green-500'
+                    }`}></div>
                   </div>
                   
-                  {/* Current Price for Open Trades */}
+                  <div className="mb-4 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                    <StockLogoWithText 
+                      ticker={trade.ticker} 
+                      size="lg" 
+                      className="text-2xl font-bold text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  
+                  {/* Enhanced Current Price for Open Trades */}
                   {isOpen && currentPrice && (
-                    <div className="mb-2">
-                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">Current Price</div>
-                      <div className="text-lg font-semibold text-gray-900 dark:text-white">
+                    <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-xl border border-blue-200 dark:border-blue-700">
+                      <div className="text-sm text-gray-600 dark:text-gray-400 mb-1 font-medium">Current Price</div>
+                      <div className="text-xl font-bold text-gray-900 dark:text-white">
                         ${currentPrice.toFixed(2)}
-                        {priceLoading && <span className="ml-2 text-xs text-gray-500">Loading...</span>}
+                        {priceLoading && <span className="ml-2 text-xs text-blue-500 animate-pulse">Loading...</span>}
                       </div>
                     </div>
                   )}
                   
-                  {/* Stock Return */}
-                  <div className="mb-3">
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                  {/* Enhanced Stock Return */}
+                  <div className="mb-4">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 font-medium">
                       {isOpen ? 'Unrealized Return' : 'Stock Return'}
                     </div>
-                    <div className="flex items-center space-x-3">
-                      <div className={`text-lg font-semibold ${
+                    <div className="flex items-center space-x-4">
+                      <div className={`text-2xl font-bold ${
                         stockReturn > 0 ? 'text-green-600' : stockReturn < 0 ? 'text-red-600' : 'text-gray-900 dark:text-white'
                       }`}>
                         {stockReturn > 0 ? '+' : ''}{stockReturn.toFixed(2)}%
                       </div>
                       {stockReturn > 0 ? (
-                        <TrendingUp className="w-8 h-8 text-green-600" />
+                        <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-full">
+                          <TrendingUp className="w-6 h-6 text-green-600" />
+                        </div>
                       ) : stockReturn < 0 ? (
-                        <TrendingDown className="w-8 h-8 text-red-600" />
+                        <div className="p-2 bg-red-100 dark:bg-red-900/30 rounded-full">
+                          <TrendingDown className="w-6 h-6 text-red-600" />
+                        </div>
                       ) : (
-                        <div className="w-8 h-8 flex items-center justify-center">
+                        <div className="w-10 h-10 flex items-center justify-center bg-gray-100 dark:bg-gray-700 rounded-full">
                           <div className="w-3 h-3 bg-gray-400 rounded-full"></div>
                         </div>
                       )}
                     </div>
                   </div>
                   
-                  {/* S&P 500 Comparison */}
-                  <div className="mb-3">
-                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-1">vs S&P 500</div>
-                    <div className={`text-sm font-medium ${
+                  {/* Enhanced S&P 500 Comparison */}
+                  <div className="p-3 bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-700 dark:to-slate-700 rounded-xl border border-gray-200 dark:border-gray-600">
+                    <div className="text-sm text-gray-600 dark:text-gray-400 mb-2 font-medium">vs S&P 500</div>
+                    <div className={`text-lg font-bold ${
                       outperformance > 0 ? 'text-green-600' : outperformance < 0 ? 'text-red-600' : 'text-gray-900 dark:text-white'
                     }`}>
                       {outperformance > 0 ? '+' : ''}{outperformance.toFixed(2)}%
-                      <span className="text-xs text-gray-500 dark:text-gray-400 ml-1">
+                      <span className="text-sm text-gray-500 dark:text-gray-400 ml-2 font-normal">
                         (S&P: {sp500Return > 0 ? '+' : ''}{sp500Return.toFixed(2)}%)
                       </span>
                     </div>
                   </div>
-                  
-
                 </div>
               );
             })}

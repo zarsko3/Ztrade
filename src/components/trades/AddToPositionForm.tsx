@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AddToPositionRequest, AddToPositionFormProps, Position } from '@/types/trade';
 import { X, Plus, DollarSign, Calendar, Hash, FileText, Tag } from 'lucide-react';
+import { StockLogoWithText } from '@/components/ui/stock-logo';
 
 export function AddToPositionForm({ 
   ticker, 
@@ -146,12 +147,21 @@ export function AddToPositionForm({
       {/* Header */}
       <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
         <div>
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-            Add to Position: {ticker}
-          </h2>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-            Add additional shares to your existing position
-          </p>
+          <div className="flex items-center space-x-3">
+            <StockLogoWithText 
+              ticker={ticker} 
+              size="lg" 
+              className="text-xl font-semibold text-gray-900 dark:text-white"
+            />
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                Add to Position
+              </h2>
+              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                Add additional shares to your existing position
+              </p>
+            </div>
+          </div>
         </div>
         <button
           onClick={onCancel}

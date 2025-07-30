@@ -1,11 +1,29 @@
-import { PrismaClient } from '@prisma/client';
+// import { PrismaClient } from '@prisma/client';
 import { TradeWithCalculations, TradeListRequest, TradeListResponse, CreateTradeRequest, Position, AddToPositionRequest } from '@/types/trade';
+import { mockDb } from '@/lib/mock-db';
 
 export class TradeService {
-  private prisma: PrismaClient;
+  private prisma: any;
 
   constructor() {
-    this.prisma = new PrismaClient();
+    // Use mock database for now due to Prisma client issues
+    this.prisma = mockDb;
+    
+    // Seed the database with sample data if empty
+    this.initializeSampleData();
+  }
+
+  private async initializeSampleData() {
+    try {
+      const tradeCount = await this.prisma.trade.count();
+      if (tradeCount === 0) {
+        console.log('Seeding database with sample trades...');
+        this.prisma.seed();
+        console.log('Database seeded successfully!');
+      }
+    } catch (error) {
+      console.error('Error seeding database:', error);
+    }
   }
 
   /**

@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { CloseTradeModal } from './CloseTradeModal';
 import { AddToPositionForm } from './AddToPositionForm';
 import { PositionDetails } from './PositionDetails';
+import { StockLogoWithText } from '@/components/ui/stock-logo';
 
 const marketDataService = MarketDataService.getInstance();
 
@@ -472,7 +473,11 @@ export function TradeList({ className = '' }: TradeListProps) {
               <div className="flex items-center justify-between">
                 <div className="flex-1">
                   <div className="flex items-center space-x-3">
-                    <div className="font-semibold text-lg text-gray-900 dark:text-white">{trade.ticker}</div>
+                    <StockLogoWithText 
+                      ticker={trade.ticker} 
+                      size="md" 
+                      className="flex-shrink-0"
+                    />
                     <div className="text-sm text-gray-500 dark:text-gray-400">
                       {trade.isShort ? 'SHORT' : 'LONG'}
                     </div>

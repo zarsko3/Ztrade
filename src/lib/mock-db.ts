@@ -113,33 +113,140 @@ export const mockDb = {
     trades.length = 0;
     performances.length = 0;
     
-    // Add sample trades
+    // Add sample trades - Mix of closed and open positions
+    // Closed trades
     mockDb.trade.create({
       data: {
-        ticker: 'AAPL',
-        entryDate: new Date('2023-01-15'),
-        entryPrice: 135.5,
-        exitDate: new Date('2023-02-20'),
-        exitPrice: 152.75,
-        quantity: 10,
+        ticker: 'NNE',
+        entryDate: new Date('2024-11-05'),
+        entryPrice: 4.80,
+        exitDate: new Date('2025-03-12'),
+        exitPrice: 6.10,
+        quantity: 208.3333,
         fees: 9.99,
-        notes: 'Bought on dip after earnings',
-        tags: 'tech,earnings',
+        notes: 'Small-cap energy play',
+        tags: 'energy,small-cap',
         isShort: false
       }
     });
     
     mockDb.trade.create({
       data: {
-        ticker: 'MSFT',
-        entryDate: new Date('2023-02-01'),
-        entryPrice: 240.25,
-        exitDate: new Date('2023-03-15'),
-        exitPrice: 265.5,
-        quantity: 5,
+        ticker: 'MSTR',
+        entryDate: new Date('2024-09-10'),
+        entryPrice: 370.00,
+        exitDate: new Date('2025-04-03'),
+        exitPrice: 420.00,
+        quantity: 2.7027,
         fees: 9.99,
-        notes: 'Technical breakout',
-        tags: 'tech,breakout',
+        notes: 'Bitcoin proxy play',
+        tags: 'crypto,bitcoin',
+        isShort: false
+      }
+    });
+    
+    mockDb.trade.create({
+      data: {
+        ticker: 'GOOGL',
+        entryDate: new Date('2024-10-15'),
+        entryPrice: 150.00,
+        exitDate: new Date('2025-05-10'),
+        exitPrice: 175.00,
+        quantity: 6.6667,
+        fees: 9.99,
+        notes: 'AI momentum trade',
+        tags: 'tech,ai',
+        isShort: false
+      }
+    });
+    
+    mockDb.trade.create({
+      data: {
+        ticker: 'AMD',
+        entryDate: new Date('2024-12-01'),
+        entryPrice: 165.00,
+        exitDate: new Date('2025-06-15'),
+        exitPrice: 180.00,
+        quantity: 6.0606,
+        fees: 9.99,
+        notes: 'Semiconductor rotation',
+        tags: 'tech,semiconductors',
+        isShort: false
+      }
+    });
+    
+    mockDb.trade.create({
+      data: {
+        ticker: 'QQQ',
+        entryDate: new Date('2024-11-20'),
+        entryPrice: 430.00,
+        exitDate: new Date('2025-07-15'),
+        exitPrice: 460.00,
+        quantity: 2.3256,
+        fees: 9.99,
+        notes: 'Tech ETF position',
+        tags: 'etf,tech',
+        isShort: false
+      }
+    });
+    
+    mockDb.trade.create({
+      data: {
+        ticker: 'LLY',
+        entryDate: new Date('2024-08-30'),
+        entryPrice: 840.00,
+        exitDate: new Date('2025-02-28'),
+        exitPrice: 960.00,
+        quantity: 1.1905,
+        fees: 9.99,
+        notes: 'Pharma growth story',
+        tags: 'pharma,healthcare',
+        isShort: false
+      }
+    });
+    
+    // Open trades
+    mockDb.trade.create({
+      data: {
+        ticker: 'NVDA',
+        entryDate: new Date('2025-04-25'),
+        entryPrice: 115.00,
+        exitDate: null,
+        exitPrice: null,
+        quantity: 8.6957,
+        fees: 9.99,
+        notes: 'AI chip leader',
+        tags: 'tech,ai,semiconductors',
+        isShort: false
+      }
+    });
+    
+    mockDb.trade.create({
+      data: {
+        ticker: 'HOOD',
+        entryDate: new Date('2025-05-02'),
+        entryPrice: 20.00,
+        exitDate: null,
+        exitPrice: null,
+        quantity: 50.0000,
+        fees: 9.99,
+        notes: 'Fintech growth play',
+        tags: 'fintech,brokerage',
+        isShort: false
+      }
+    });
+    
+    mockDb.trade.create({
+      data: {
+        ticker: 'NU',
+        entryDate: new Date('2025-06-05'),
+        entryPrice: 12.00,
+        exitDate: null,
+        exitPrice: null,
+        quantity: 83.3333,
+        fees: 9.99,
+        notes: 'Digital banking in Latin America',
+        tags: 'fintech,latin-america',
         isShort: false
       }
     });
@@ -147,12 +254,14 @@ export const mockDb = {
     mockDb.trade.create({
       data: {
         ticker: 'TSLA',
-        entryDate: new Date('2023-03-10'),
-        entryPrice: 180.5,
-        quantity: 8,
+        entryDate: new Date('2025-06-10'),
+        entryPrice: 250.00,
+        exitDate: null,
+        exitPrice: null,
+        quantity: 4.0000,
         fees: 9.99,
-        notes: 'Long-term hold',
-        tags: 'ev,tech',
+        notes: 'EV market leader',
+        tags: 'ev,automotive',
         isShort: false
       }
     });
@@ -161,26 +270,26 @@ export const mockDb = {
     mockDb.performance.create({
       data: {
         period: 'monthly',
-        startDate: new Date('2023-01-01'),
-        endDate: new Date('2023-01-31'),
-        totalTrades: 5,
-        winningTrades: 3,
-        losingTrades: 2,
-        profitLoss: 1250.75,
-        spReturn: 3.5
+        startDate: new Date('2024-11-01'),
+        endDate: new Date('2024-11-30'),
+        totalTrades: 3,
+        winningTrades: 2,
+        losingTrades: 1,
+        profitLoss: 572.74,
+        spReturn: 2.8
       }
     });
     
     mockDb.performance.create({
       data: {
         period: 'monthly',
-        startDate: new Date('2023-02-01'),
-        endDate: new Date('2023-02-28'),
-        totalTrades: 4,
-        winningTrades: 2,
-        losingTrades: 2,
-        profitLoss: -450.25,
-        spReturn: -2.1
+        startDate: new Date('2024-12-01'),
+        endDate: new Date('2024-12-31'),
+        totalTrades: 2,
+        winningTrades: 1,
+        losingTrades: 1,
+        profitLoss: 156.68,
+        spReturn: 1.2
       }
     });
     

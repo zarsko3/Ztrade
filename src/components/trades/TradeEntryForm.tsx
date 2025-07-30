@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { CreateTradeRequest, UpdateTradeRequest, TradeFormData, TradeEntryFormProps } from '@/types/trade';
 import { X } from 'lucide-react';
+import { StockLogoCompact } from '@/components/ui/stock-logo';
 
 export function TradeEntryForm({ 
   mode, 
@@ -265,14 +266,24 @@ export function TradeEntryForm({
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
               Ticker *
             </label>
-            <input
-              type="text"
-              value={formData.ticker || ''}
-              onChange={(e) => handleInputChange('ticker', e.target.value.toUpperCase())}
-              className={`input ${errors.ticker ? 'border-red-300 dark:border-red-500 focus:border-red-500 dark:focus:border-red-400 focus:ring-red-100 dark:focus:ring-red-900/20' : ''}`}
-              placeholder="e.g., AAPL"
-              disabled={isLoading}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                value={formData.ticker || ''}
+                onChange={(e) => handleInputChange('ticker', e.target.value.toUpperCase())}
+                className={`input pl-12 ${errors.ticker ? 'border-red-300 dark:border-red-500 focus:border-red-500 dark:focus:border-red-400 focus:ring-red-100 dark:focus:ring-red-900/20' : ''}`}
+                placeholder="e.g., AAPL"
+                disabled={isLoading}
+              />
+              {formData.ticker && (
+                <div className="absolute left-3 top-1/2 transform -translate-y-1/2">
+                  <StockLogoCompact 
+                    ticker={formData.ticker} 
+                    size="sm" 
+                  />
+                </div>
+              )}
+            </div>
             {errors.ticker && (
               <p className="mt-2 text-sm text-red-600 dark:text-red-400">{errors.ticker}</p>
             )}
@@ -285,9 +296,15 @@ export function TradeEntryForm({
                     </svg>
                   </div>
                   <div className="flex-1">
-                    <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                      <strong>Existing position found:</strong> You already have an open position for {formData.ticker} with {existingPosition.totalQuantity.toFixed(4)} shares at an average price of ${existingPosition.averageEntryPrice.toFixed(2)}.
-                    </p>
+                    <div className="flex items-center space-x-2 mb-1">
+                      <StockLogoCompact 
+                        ticker={formData.ticker} 
+                        size="sm" 
+                      />
+                      <p className="text-sm text-yellow-800 dark:text-yellow-200">
+                        <strong>Existing position found:</strong> You already have an open position for {formData.ticker} with {existingPosition.totalQuantity.toFixed(4)} shares at an average price of ${existingPosition.averageEntryPrice.toFixed(2)}.
+                      </p>
+                    </div>
                     <p className="text-sm text-yellow-700 dark:text-yellow-300 mt-1">
                       Consider using "Add to Position" instead of creating a new trade.
                     </p>
