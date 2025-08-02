@@ -11,7 +11,24 @@ This application uses **Prisma with SQLite** for user authentication, not Fireba
 
 ## Solutions
 
-### Option 1: Create Users via Script (Recommended)
+### Option 1: Use the Registration Page (Easiest)
+
+1. **Visit the registration page** on your deployed site:
+   ```
+   https://your-site.com/register
+   ```
+
+2. **Fill out the form** with your desired credentials:
+   - Username (required)
+   - Password (required)
+   - Email (optional)
+   - Name (optional)
+
+3. **Click "Create Account"** to create the user
+
+4. **Navigate to login page** and sign in with your new credentials
+
+### Option 2: Create Users via Script (Advanced)
 
 1. **Install dependencies** (if not already done):
    ```bash
