@@ -3,9 +3,13 @@ import { AuthService } from '@/services/auth-service';
 
 export async function POST(request: NextRequest) {
   try {
+    console.log('🔍 Registration request received');
+    console.log('JWT_SECRET set:', !!process.env.JWT_SECRET);
+    
     let body;
     try {
       body = await request.json();
+      console.log('✅ Body parsed:', { username: body.username, hasPassword: !!body.password });
     } catch (parseError) {
       console.error('JSON parse error:', parseError);
       return NextResponse.json(
@@ -17,13 +21,16 @@ export async function POST(request: NextRequest) {
     const { username, password, email, name } = body;
 
     if (!username || !password) {
+      console.log('❌ Missing required fields');
       return NextResponse.json(
         { error: 'Username and password are required' },
         { status: 400 }
       );
     }
 
+    console.log('✅ Calling AuthService.register...');
     const result = await AuthService.register({ username, password, email, name });
+    console.log('✅ AuthService result:', { success: result.success, message: result.message });
 
     if (!result.success) {
       return NextResponse.json(
@@ -38,7 +45,7 @@ export async function POST(request: NextRequest) {
       message: 'User created successfully'
     });
   } catch (error) {
-    console.error('Registration error:', error);
+    console.error('❌ Registration error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
