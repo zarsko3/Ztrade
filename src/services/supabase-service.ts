@@ -1,4 +1,4 @@
-import { supabase, supabaseAdmin, TABLES, DatabaseTrade, DatabasePerformance } from '@/lib/supabase'
+import { supabase, TABLES, DatabaseTrade } from '@/lib/supabase'
 import { TradeWithCalculations, CreateTradeRequest, UpdateTradeRequest, Position, AddToPositionRequest } from '@/types/trade'
 
 export class SupabaseService {

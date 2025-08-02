@@ -29,7 +29,7 @@ interface DailyTradeData {
 export default function DashboardPage() {
   const [trades, setTrades] = useState<Trade[]>([]);
   const [dailyData, setDailyData] = useState<DailyTradeData[]>([]);
-  const [selectedPeriod, setSelectedPeriod] = useState('30');
+  const [selectedPeriod] = useState('30');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [fearGreedData, setFearGreedData] = useState<FearGreedData | null>(null);
@@ -257,61 +257,7 @@ export default function DashboardPage() {
 
 
 
-  const formatCurrency = (amount: number): string => {
-    if (amount >= 1000) {
-      return `$${(amount / 1000).toFixed(2)}k`;
-    }
-    return `$${amount.toFixed(2)}`;
-  };
 
-
-
-  const calculateStockReturn = (trade: Trade): number => {
-    if (!trade.exitDate || !trade.exitPrice) {
-      // For open trades, use current price if available
-      const currentPrice = currentPrices[trade.ticker];
-      if (currentPrice) {
-        const entryValue = trade.entryPrice * trade.quantity;
-        const currentValue = currentPrice * trade.quantity;
-        
-        if (trade.isShort) {
-          return ((entryValue - currentValue) / entryValue) * 100;
-        } else {
-          return ((currentValue - entryValue) / entryValue) * 100;
-        }
-      }
-      return 0;
-    }
-    
-    const entryValue = trade.entryPrice * trade.quantity;
-    const exitValue = trade.exitPrice * trade.quantity;
-    
-    if (trade.isShort) {
-      return ((entryValue - exitValue) / entryValue) * 100;
-    } else {
-      return ((exitValue - entryValue) / entryValue) * 100;
-    }
-  };
-
-  const getSP500Comparison = (trade: Trade): number => {
-    // Use a stable, realistic S&P 500 return based on the trade's time period
-    // This provides consistent, believable performance comparison
-    const entryDate = typeof trade.entryDate === 'string' ? new Date(trade.entryDate) : trade.entryDate;
-    const exitDate = trade.exitDate ? (typeof trade.exitDate === 'string' ? new Date(trade.exitDate) : trade.exitDate) : new Date();
-    
-    const daysDiff = Math.ceil((exitDate.getTime() - entryDate.getTime()) / (1000 * 60 * 60 * 24));
-    
-    // Realistic S&P 500 returns based on holding period
-    if (daysDiff <= 7) {
-      return -0.8; // Short-term: slight negative
-    } else if (daysDiff <= 30) {
-      return -1.2; // Medium-term: moderate negative
-    } else if (daysDiff <= 90) {
-      return -2.1; // Long-term: significant negative
-    } else {
-      return -3.5; // Extended: major negative
-    }
-  };
 
   return (
     <ProtectedRoute>
