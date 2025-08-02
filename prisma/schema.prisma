@@ -10,9 +10,38 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// User model for authentication and user management
+model User {
+  id          String    @id @default(cuid())
+  username    String    @unique
+  password    String    // Hashed password
+  email       String?   @unique
+  name        String?
+  isActive    Boolean   @default(true)
+  role        String    @default("user") // "user", "admin"
+  
+  // Metadata
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  lastLogin   DateTime?
+  
+  // Relationships
+  trades      Trade[]
+  
+  // Indexes
+  @@index([username])
+  @@index([email])
+  @@index([isActive])
+  
+  // Validation rules:
+  // - username: must be unique, 3-50 characters
+  // - password: must be hashed
+  // - email: must be valid email format when provided
+}
+
 // Trade model for storing stock trade information
 model Trade {
-  id          Int       @id @default(autoincrement())
+  id          String    @id @default(cuid()) // Changed to String for UUID
   ticker      String    // Stock ticker symbol (e.g., AAPL, MSFT)
   entryDate   DateTime  // Date when the trade was entered
   entryPrice  Float     // Price per share at entry
@@ -23,6 +52,10 @@ model Trade {
   notes       String?   // Additional notes about the trade (optional)
   tags        String?   // Comma-separated tags for categorization (optional)
   isShort     Boolean   @default(false) // Whether this is a short position
+  
+  // User relationship
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   
   // AI-Enhanced Fields
   confidenceScore   Float?   // AI confidence in trade decision (0-1)
@@ -37,7 +70,7 @@ model Trade {
   
   // Relationship with Performance
   performance     Performance? @relation(fields: [performanceId], references: [id])
-  performanceId   Int?
+  performanceId   String?
   
   // AI Relationships
   insights        TradeInsight[]
@@ -45,6 +78,7 @@ model Trade {
   patterns        TradePattern[] @relation("TradePatterns")
   
   // Indexes for improved query performance
+  @@index([userId])
   @@index([ticker])
   @@index([entryDate])
   @@index([exitDate])
@@ -62,7 +96,8 @@ model Trade {
 
 // Performance model for storing aggregated performance metrics
 model Performance {
-  id              Int       @id @default(autoincrement())
+  id              String    @id @default(cuid()) // Changed to String for UUID
+  userId          String    // User who owns this performance data
   period          String    // "weekly", "monthly", or "yearly"
   startDate       DateTime  // Start date of the period
   endDate         DateTime  // End date of the period
@@ -87,9 +122,10 @@ model Performance {
   trades          Trade[]   // Trades included in this performance period
   
   // Indexes for improved query performance
+  @@index([userId])
   @@index([period])
   @@index([startDate, endDate])
-  @@unique([period, startDate, endDate]) // Ensure no duplicate periods
+  @@unique([userId, period, startDate, endDate]) // Ensure no duplicate periods per user
   
   // Validation rules (to be implemented in application code):
   // - period: must be one of "weekly", "monthly", or "yearly"
@@ -100,7 +136,8 @@ model Performance {
 
 // Trade Pattern Analysis - Stores identified trading patterns
 model TradePattern {
-  id              Int       @id @default(autoincrement())
+  id              String    @id @default(cuid()) // Changed to String for UUID
+  userId          String    // User who owns this pattern
   patternType     String    // "trend_following", "mean_reversion", "breakout", "volume"
   patternName     String    // Human-readable pattern name
   confidenceScore Float     // Pattern confidence score (0-1)
@@ -116,6 +153,7 @@ model TradePattern {
   trades          Trade[]   @relation("TradePatterns")
   
   // Indexes
+  @@index([userId])
   @@index([patternType])
   @@index([confidenceScore])
   @@index([createdAt])
@@ -128,8 +166,8 @@ model TradePattern {
 
 // AI Insights - Stores AI-generated insights for trades
 model TradeInsight {
-  id              Int       @id @default(autoincrement())
-  tradeId         Int       // Reference to the trade
+  id              String    @id @default(cuid()) // Changed to String for UUID
+  tradeId         String    // Reference to the trade
   insightType     String    // "performance", "risk", "pattern", "behavioral"
   insightText     String    // The actual insight text
   confidenceScore Float     // AI confidence in this insight (0-1)
@@ -153,7 +191,8 @@ model TradeInsight {
 
 // ML Model Metadata - Stores information about trained ML models
 model MLModel {
-  id              Int       @id @default(autoincrement())
+  id              String    @id @default(cuid()) // Changed to String for UUID
+  userId          String    // User who owns this model
   modelName       String    // Name of the model
   modelVersion    String    // Version string
   modelType       String    // "pattern_classification", "prediction", "clustering"
@@ -168,10 +207,11 @@ model MLModel {
   updatedAt       DateTime  @updatedAt
   
   // Indexes
+  @@index([userId])
   @@index([modelName])
   @@index([modelType])
   @@index([isActive])
-  @@unique([modelName, modelVersion]) // Ensure unique model versions
+  @@unique([userId, modelName, modelVersion]) // Ensure unique model versions per user
   
   // Validation rules:
   // - modelType: must be one of the defined model types
@@ -180,8 +220,8 @@ model MLModel {
 
 // Trade Predictions - Stores AI predictions for trades
 model TradePrediction {
-  id              Int       @id @default(autoincrement())
-  tradeId         Int       // Reference to the trade
+  id              String    @id @default(cuid()) // Changed to String for UUID
+  tradeId         String    // Reference to the trade
   predictionType  String    // "entry", "exit", "price", "risk"
   predictedValue  Float     // The predicted value
   actualValue     Float?    // The actual value (for validation)

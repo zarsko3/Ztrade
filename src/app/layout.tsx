@@ -3,8 +3,10 @@ import "./globals.css";
 import { Sidebar } from "@/components/layouts/Sidebar";
 import { NotificationProvider } from "@/components/NotificationSystem";
 import { ThemeProvider } from "@/lib/theme-context";
-// import { StagewiseToolbar } from "@stagewise/toolbar-next";
-// import ReactPlugin from "@stagewise-plugins/react";
+import { AuthProvider } from "@/lib/auth-context";
+import { StagewiseToolbar } from "@stagewise/toolbar-next";
+import ReactPlugin from "@stagewise-plugins/react";
+import { LayoutWrapper } from "@/components/layouts/LayoutWrapper";
 
 export const metadata: Metadata = {
   title: "Trade - Professional Trading Dashboard",
@@ -23,21 +25,18 @@ export default function RootLayout({
       </head>
       <body className="bg-gray-50/50 dark:bg-gray-900/50 font-sans antialiased">
         <ThemeProvider>
-          <NotificationProvider>
-            <div className="flex h-screen">
-              <Sidebar />
-              <main className="flex-1 lg:ml-72 overflow-auto bg-gradient-to-br from-gray-50/50 to-gray-100/50 dark:from-gray-900/50 dark:to-gray-800/50">
-                <div className="p-8 lg:p-12">
-                  {children}
-                </div>
-              </main>
-            </div>
-            {/* <StagewiseToolbar
-              config={{
-                plugins: [ReactPlugin],
-              }}
-            /> */}
-          </NotificationProvider>
+          <AuthProvider>
+            <NotificationProvider>
+              <LayoutWrapper>
+                {children}
+              </LayoutWrapper>
+              <StagewiseToolbar
+                config={{
+                  plugins: [ReactPlugin],
+                }}
+              />
+            </NotificationProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

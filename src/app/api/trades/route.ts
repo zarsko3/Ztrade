@@ -2,9 +2,19 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tradeService } from '@/services/trade-service';
 import { TradeListRequest } from '@/types/trade';
 import { emitTradeUpdate, createTradeUpdate } from '@/lib/websocket-utils';
+import { authenticateRequest } from '@/lib/auth-middleware';
 
-export async function GET(request: NextRequest) {
+async function GET(request: NextRequest) {
   try {
+    const authenticatedRequest = await authenticateRequest(request);
+    
+    if (!authenticatedRequest) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
 
     // Parse query parameters
@@ -17,7 +27,8 @@ export async function GET(request: NextRequest) {
       startDate: searchParams.get('startDate') || undefined,
       endDate: searchParams.get('endDate') || undefined,
       status: searchParams.get('status') as any || 'all',
-      search: searchParams.get('search') || undefined
+      search: searchParams.get('search') || undefined,
+      userId: authenticatedRequest.user!.userId // Add user ID for data isolation
     };
 
     // Validate parameters
@@ -73,9 +84,23 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+export { GET };
+
+async function POST(request: NextRequest) {
   try {
+    const authenticatedRequest = await authenticateRequest(request);
+    
+    if (!authenticatedRequest) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
+    
+    // Add user ID to the trade data
+    body.userId = authenticatedRequest.user!.userId;
     
     console.log('API received trade data:', body);
     
@@ -168,4 +193,6 @@ export async function POST(request: NextRequest) {
       { status: 500 }
     );
   }
-} 
+}
+
+export { POST }; 

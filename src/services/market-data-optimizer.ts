@@ -103,20 +103,24 @@ class MarketDataOptimizer {
     // Check cache first
     const cached = this.getCachedData(symbol);
     if (cached) {
-      return {
-        ...cached,
-        dataQuality: 'cached' as const,
-        source: 'cache' as const
-      };
+      return cached;
     }
 
-    // Check rate limits
-    await this.checkRateLimits();
+    // Validate symbol format (only allow alphanumeric and common symbols)
+    if (!/^[A-Za-z0-9.^]+$/.test(symbol)) {
+      console.warn(`Invalid symbol format: ${symbol}, using fallback data`);
+      return this.createFallbackData(symbol);
+    }
 
     // Try Yahoo Finance first
     try {
       const quote = await this.fetchWithRetry(symbol);
       
+      // Validate quote data before using it
+      if (!quote || typeof quote !== 'object') {
+        throw new Error('Invalid quote data received');
+      }
+
       const data: OptimizedMarketData = {
         symbol,
         price: quote.regularMarketPrice || 0,
@@ -124,7 +128,7 @@ class MarketDataOptimizer {
         changePercent: quote.regularMarketChangePercent || 0,
         volume: quote.regularMarketVolume || 0,
         timestamp: new Date().toISOString(),
-        lastUpdated: new Date(quote.regularMarketTime * 1000).toISOString(),
+        lastUpdated: quote.regularMarketTime ? new Date(quote.regularMarketTime * 1000).toISOString() : new Date().toISOString(),
         dataQuality: 'live' as const,
         source: 'yahoo' as const
       };

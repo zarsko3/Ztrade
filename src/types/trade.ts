@@ -63,6 +63,7 @@ export interface TradeListRequest {
   endDate?: string;
   status?: 'open' | 'closed' | 'all';
   search?: string;
+  userId?: string;
 }
 
 export interface TradeListResponse {
@@ -88,6 +89,7 @@ export interface CreateTradeRequest {
   tags?: string;
   exitDate?: string;
   exitPrice?: number;
+  userId?: string;
 }
 
 export interface CreateTradeResponse {

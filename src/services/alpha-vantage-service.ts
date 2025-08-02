@@ -113,14 +113,24 @@ class AlphaVantageService {
         throw new Error('No quote data received from Alpha Vantage');
       }
 
+      // Validate required fields before parsing
+      const price = globalQuote['05. price'];
+      const change = globalQuote['09. change'];
+      const changePercent = globalQuote['10. change percent'];
+      const volume = globalQuote['06. volume'];
+
+      if (!price || !change || !changePercent || !volume) {
+        throw new Error('Missing required quote data from Alpha Vantage');
+      }
+
       const quote: AlphaVantageQuote = {
-        symbol: globalQuote['01. symbol'],
-        price: parseFloat(globalQuote['05. price']),
-        change: parseFloat(globalQuote['09. change']),
-        changePercent: parseFloat(globalQuote['10. change percent'].replace('%', '')),
-        volume: parseInt(globalQuote['06. volume']),
+        symbol: globalQuote['01. symbol'] || symbol,
+        price: parseFloat(price),
+        change: parseFloat(change),
+        changePercent: parseFloat(changePercent.replace('%', '')),
+        volume: parseInt(volume),
         timestamp: new Date().toISOString(),
-        lastUpdated: globalQuote['07. latest trading day'],
+        lastUpdated: globalQuote['07. latest trading day'] || new Date().toISOString(),
         dataQuality: 'live',
         source: 'alpha-vantage'
       };

@@ -2,18 +2,39 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { TradeWithCalculations } from '@/types/trade';
+// Define interface that matches the actual API response
+interface TradeData {
+  id: string;
+  ticker: string;
+  entryDate: string;
+  entryPrice: number;
+  exitDate?: string;
+  exitPrice?: number;
+  quantity: number;
+  fees?: number;
+  notes?: string;
+  tags?: string;
+  isShort: boolean;
+  createdAt: string;
+  updatedAt: string;
+  totalCost?: number;
+  totalValue?: number;
+  profitLoss?: number;
+  profitLossPercent?: number;
+  isOpen?: boolean;
+  duration?: number;
+}
 import TickerLogo from '@/components/ui/TickerLogo';
 import { Trash2, Edit, X } from 'lucide-react';
 
 interface TradeDetailProps {
-  tradeId: number;
+  tradeId: string;
   className?: string;
 }
 
 export function TradeDetail({ tradeId, className = '' }: TradeDetailProps) {
   const router = useRouter();
-  const [trade, setTrade] = useState<TradeWithCalculations | null>(null);
+  const [trade, setTrade] = useState<TradeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState(false);
@@ -66,7 +87,10 @@ export function TradeDetail({ tradeId, className = '' }: TradeDetailProps) {
     });
   };
 
-  const formatPercentage = (percentage: number) => {
+  const formatPercentage = (percentage: number | null | undefined) => {
+    if (percentage === null || percentage === undefined) {
+      return 'N/A';
+    }
     return `${percentage >= 0 ? '+' : ''}${percentage.toFixed(2)}%`;
   };
 
@@ -252,7 +276,7 @@ export function TradeDetail({ tradeId, className = '' }: TradeDetailProps) {
                   <div>
                     <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">Holding Period</dt>
                     <dd className="text-sm text-gray-900 dark:text-white">
-                      {trade.holdingPeriod} days
+                      {trade.duration} days
                     </dd>
                   </div>
                 </>
@@ -282,9 +306,9 @@ export function TradeDetail({ tradeId, className = '' }: TradeDetailProps) {
               <div>
                 <dt className="text-sm font-medium text-gray-500 dark:text-gray-400">P&L Percentage</dt>
                 <dd className={`text-lg font-semibold ${
-                  trade.profitLossPercentage! >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
+                  (trade.profitLossPercent ?? 0) >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                 }`}>
-                  {formatPercentage(trade.profitLossPercentage!)}
+                  {formatPercentage(trade.profitLossPercent)}
                 </dd>
               </div>
               <div>
@@ -292,7 +316,7 @@ export function TradeDetail({ tradeId, className = '' }: TradeDetailProps) {
                 <dd className={`text-lg font-semibold ${
                   trade.profitLoss >= 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'
                 }`}>
-                  {formatPercentage(trade.profitLossPercentage!)}
+                  {formatPercentage(trade.profitLossPercent)}
                 </dd>
               </div>
             </div>

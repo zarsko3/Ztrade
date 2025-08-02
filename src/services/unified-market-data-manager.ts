@@ -15,6 +15,7 @@ export interface UnifiedMarketData {
 class UnifiedMarketDataManager {
   private static instance: UnifiedMarketDataManager;
   private isInitialized = false;
+  private initializationPromise: Promise<void> | null = null;
   private updateInterval: NodeJS.Timeout | null = null;
   private subscribers: Set<(data: UnifiedMarketData[]) => void> = new Set();
   private currentData: Map<string, UnifiedMarketData> = new Map();
@@ -32,23 +33,42 @@ class UnifiedMarketDataManager {
    * Initialize the unified data manager
    */
   async initialize(symbols: string[] = []): Promise<void> {
+    // If already initialized, return immediately
     if (this.isInitialized) {
       return;
     }
 
-    const symbolsToTrack = symbols.length > 0 ? symbols : this.defaultSymbols;
-    console.log('Initializing Unified Market Data Manager with symbols:', symbolsToTrack);
+    // If initialization is in progress, wait for it
+    if (this.initializationPromise) {
+      return this.initializationPromise;
+    }
 
-    // Initial data fetch
-    await this.updateMarketData(symbolsToTrack);
+    // Start initialization
+    this.initializationPromise = this.performInitialization(symbols);
+    await this.initializationPromise;
+  }
 
-    // Set up unified update interval (90 seconds)
-    this.updateInterval = setInterval(async () => {
+  private async performInitialization(symbols: string[] = []): Promise<void> {
+    try {
+      const symbolsToTrack = symbols.length > 0 ? symbols : this.defaultSymbols;
+      console.log('Initializing Unified Market Data Manager with symbols:', symbolsToTrack);
+
+      // Initial data fetch
       await this.updateMarketData(symbolsToTrack);
-    }, 90000); // 90 seconds - Yahoo Finance recommended refresh rate
 
-    this.isInitialized = true;
-    console.log('Unified Market Data Manager initialized');
+      // Set up unified update interval (90 seconds)
+      this.updateInterval = setInterval(async () => {
+        await this.updateMarketData(symbolsToTrack);
+      }, 90000); // 90 seconds - Yahoo Finance recommended refresh rate
+
+      this.isInitialized = true;
+      console.log('Unified Market Data Manager initialized');
+    } catch (error) {
+      console.error('Failed to initialize Unified Market Data Manager:', error);
+      this.isInitialized = false;
+      this.initializationPromise = null;
+      throw error;
+    }
   }
 
   /**
@@ -257,6 +277,7 @@ class UnifiedMarketDataManager {
     this.subscribers.clear();
     this.currentData.clear();
     this.isInitialized = false;
+    this.initializationPromise = null; // Reset initialization promise on cleanup
     console.log('Unified Market Data Manager cleaned up');
   }
 

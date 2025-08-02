@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
 import { tradeService } from '@/services/trade-service';
 import { emitTradeUpdate, createTradeUpdate } from '@/lib/websocket-utils';
 
@@ -11,16 +10,15 @@ export async function GET(
     const { id } = await params;
 
     // Validate trade ID
-    const tradeId = parseInt(id);
-    if (isNaN(tradeId) || tradeId <= 0) {
+    if (!id || typeof id !== 'string') {
       return NextResponse.json(
-        { error: 'Invalid trade ID. Must be a positive integer.' },
+        { error: 'Invalid trade ID.' },
         { status: 400 }
       );
     }
 
     // Get trade from service
-    const trade = await tradeService.getTradeById(tradeId);
+    const trade = await tradeService.getTradeById(id);
 
     if (!trade) {
       return NextResponse.json(
@@ -51,23 +49,20 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: idParam } = await params;
-    const id = parseInt(idParam);
+    const { id } = await params;
     
-    if (isNaN(id)) {
+    if (!id || typeof id !== 'string') {
       return NextResponse.json(
         {
           status: 'error',
-          message: 'Invalid trade ID. Must be a number.',
+          message: 'Invalid trade ID.',
         },
         { status: 400 }
       );
     }
 
     // Check if trade exists
-    const existingTrade = await prisma.trade.findUnique({
-      where: { id }
-    });
+    const existingTrade = await tradeService.getTradeById(id);
 
     if (!existingTrade) {
       return NextResponse.json(
@@ -234,17 +229,11 @@ export async function PUT(
       updateData.isShort = Boolean(body.isShort);
     }
     
-    // Update the trade
-    const updatedTrade = await prisma.trade.update({
-      where: { id },
-      data: updateData,
-      include: {
-        performance: true
-      }
-    });
+    // Update the trade using service
+    const updatedTrade = await tradeService.updateTrade(id, updateData);
 
     // Emit WebSocket update
-    emitTradeUpdate(createTradeUpdate(updatedTrade.id.toString(), 'updated', updatedTrade));
+    emitTradeUpdate(createTradeUpdate(updatedTrade.id, 'updated', updatedTrade));
     
     return NextResponse.json({
       status: 'success',
@@ -269,23 +258,20 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id: idParam } = await params;
-    const id = parseInt(idParam);
+    const { id } = await params;
     
-    if (isNaN(id)) {
+    if (!id || typeof id !== 'string') {
       return NextResponse.json(
         {
           status: 'error',
-          message: 'Invalid trade ID. Must be a number.',
+          message: 'Invalid trade ID.',
         },
         { status: 400 }
       );
     }
 
     // Check if trade exists
-    const existingTrade = await prisma.trade.findUnique({
-      where: { id }
-    });
+    const existingTrade = await tradeService.getTradeById(id);
 
     if (!existingTrade) {
       return NextResponse.json(
@@ -297,16 +283,21 @@ export async function DELETE(
       );
     }
 
-    // Allow deletion of any trade (open or closed)
-    // Note: This allows users to delete trades with incorrect data
+    // Delete the trade using service
+    const success = await tradeService.deleteTrade(id);
 
-    // Delete the trade
-    await prisma.trade.delete({
-      where: { id }
-    });
+    if (!success) {
+      return NextResponse.json(
+        {
+          status: 'error',
+          message: 'Failed to delete trade',
+        },
+        { status: 500 }
+      );
+    }
 
     // Emit WebSocket update
-    emitTradeUpdate(createTradeUpdate(existingTrade.id.toString(), 'deleted', existingTrade));
+    emitTradeUpdate(createTradeUpdate(existingTrade.id, 'deleted', existingTrade));
     
     return NextResponse.json({
       status: 'success',

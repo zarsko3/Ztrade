@@ -6,7 +6,7 @@ import { TradeDetail } from '@/components/trades/TradeDetail';
 import Link from 'next/link';
 
 interface Trade {
-  id: number;
+  id: string;
   ticker: string;
   entryDate: string;
   entryPrice: number;
@@ -40,7 +40,7 @@ interface TradeDetailPageProps {
 export default function TradeDetailPage({ params }: TradeDetailPageProps) {
   const router = useRouter();
   const { id } = use(params);
-  const tradeId = parseInt(id);
+  const tradeId = id; // Keep as string since trade IDs are UUIDs
   const [trade, setTrade] = useState<Trade | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
