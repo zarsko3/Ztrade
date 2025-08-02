@@ -1,5 +1,5 @@
 export interface Trade {
-  id: number;
+  id: string; // Changed from number to string for UUID support
   ticker: string;
   entryDate: Date | string;
   entryPrice: number;
@@ -20,6 +20,7 @@ export interface TradeWithCalculations extends Trade {
   profitLossPercentage?: number;
   isOpen: boolean;
   holdingPeriod?: number;
+  totalCost?: number; // Added for position calculations
 }
 
 // New interfaces for position management
@@ -35,6 +36,7 @@ export interface Position {
   currentValue?: number;
   unrealizedPnL?: number;
   unrealizedPnLPercentage?: number;
+  totalCost?: number; // Added for backward compatibility
 }
 
 export interface AddToPositionRequest {
@@ -45,6 +47,7 @@ export interface AddToPositionRequest {
   fees?: number;
   notes?: string;
   tags?: string;
+  isShort?: boolean; // Added missing property
 }
 
 export interface AddToPositionResponse {

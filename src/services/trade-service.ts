@@ -1,4 +1,4 @@
-import { TradeWithCalculations, TradeListRequest, TradeListResponse, CreateTradeRequest, Position, AddToPositionRequest } from '@/types/trade';
+import { TradeWithCalculations, TradeListRequest, TradeListResponse, CreateTradeRequest, UpdateTradeRequest, Position, AddToPositionRequest } from '@/types/trade';
 import { SupabaseService } from './supabase-service';
 
 export class TradeService {
@@ -153,12 +153,12 @@ export class TradeService {
             currentValue = position.totalQuantity * currentPrice;
             
             if (position.isShort) {
-              unrealizedPnL = position.totalCost - currentValue;
+              unrealizedPnL = (position.totalCost || 0) - currentValue;
             } else {
-              unrealizedPnL = currentValue - position.totalCost;
+              unrealizedPnL = currentValue - (position.totalCost || 0);
             }
             
-            unrealizedPnLPercentage = (unrealizedPnL / position.totalCost) * 100;
+            unrealizedPnLPercentage = (position.totalCost || 0) > 0 ? (unrealizedPnL / (position.totalCost || 1)) * 100 : 0;
           }
         }
       } catch (error) {
@@ -277,7 +277,7 @@ export class TradeService {
       let winningTrades = 0;
 
       trades.forEach(trade => {
-        if (!trade.isOpen && trade.profitLoss !== null) {
+        if (!trade.isOpen && trade.profitLoss !== null && trade.profitLoss !== undefined) {
           totalProfitLoss += trade.profitLoss;
           if (trade.profitLoss > 0) {
             winningTrades++;

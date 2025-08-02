@@ -9,7 +9,7 @@ export interface UnifiedMarketData {
   timestamp: string;
   lastUpdated: string;
   dataQuality: 'live' | 'cached' | 'mock';
-  source: 'yahoo' | 'cache' | 'fallback';
+  source: 'yahoo' | 'alpha-vantage' | 'cache' | 'fallback';
 }
 
 class UnifiedMarketDataManager {

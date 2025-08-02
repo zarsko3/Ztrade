@@ -19,29 +19,24 @@ export class SupabaseService {
 
   // Convert database trade to application trade
   private mapDatabaseTradeToTrade(dbTrade: DatabaseTrade): TradeWithCalculations {
-    const trade: TradeWithCalculations = {
+    return {
       id: dbTrade.id,
       ticker: dbTrade.ticker,
       entryDate: new Date(dbTrade.entry_date),
       entryPrice: dbTrade.entry_price,
-      exitDate: dbTrade.exit_date ? new Date(dbTrade.exit_date) : null,
-      exitPrice: dbTrade.exit_price,
+      exitDate: dbTrade.exit_date ? new Date(dbTrade.exit_date) : undefined,
+      exitPrice: dbTrade.exit_price || undefined,
       quantity: dbTrade.quantity,
-      fees: dbTrade.fees,
-      notes: dbTrade.notes || '',
-      tags: dbTrade.tags || '',
+      fees: dbTrade.fees || undefined,
+      notes: dbTrade.notes || undefined,
+      tags: dbTrade.tags || undefined,
       isShort: dbTrade.is_short,
       createdAt: new Date(dbTrade.created_at),
       updatedAt: new Date(dbTrade.updated_at),
-      // Calculate derived fields
-      totalCost: dbTrade.entry_price * dbTrade.quantity + dbTrade.fees,
-      totalValue: dbTrade.exit_price ? dbTrade.exit_price * dbTrade.quantity - dbTrade.fees : null,
-      profitLoss: dbTrade.exit_price ? (dbTrade.exit_price - dbTrade.entry_price) * dbTrade.quantity - dbTrade.fees : null,
-      profitLossPercent: dbTrade.exit_price ? ((dbTrade.exit_price - dbTrade.entry_price) / dbTrade.entry_price) * 100 : null,
+      profitLoss: dbTrade.exit_price ? (dbTrade.exit_price - dbTrade.entry_price) * dbTrade.quantity - (dbTrade.fees || 0) : undefined,
       isOpen: !dbTrade.exit_date,
-      duration: dbTrade.exit_date ? Math.ceil((new Date(dbTrade.exit_date).getTime() - new Date(dbTrade.entry_date).getTime()) / (1000 * 60 * 60 * 24)) : null
-    }
-    return trade
+      totalCost: dbTrade.entry_price * dbTrade.quantity
+    };
   }
 
   // Convert application trade to database trade
@@ -239,18 +234,24 @@ export class SupabaseService {
       })
 
       // Convert to Position objects
-      const positions: Position[] = Array.from(positionsMap.entries()).map(([ticker, trades]) => {
+      const positions: Position[] = Array.from(positionsMap.entries()).map(([ticker, trades]) => { 
         const totalQuantity = trades.reduce((sum, trade) => sum + trade.quantity, 0)
-        const totalCost = trades.reduce((sum, trade) => sum + trade.totalCost, 0)
-        const averageEntryPrice = totalCost / totalQuantity
+        const totalCost = trades.reduce((sum, trade) => sum + (trade.totalCost || 0), 0)
+        const totalFees = trades.reduce((sum, trade) => sum + (trade.fees || 0), 0)
+        const averageEntryPrice = totalQuantity > 0 ? totalCost / totalQuantity : 0
+        const isShort = trades[0]?.isShort || false
+        const isOpen = trades.some(trade => trade.isOpen)
 
         return {
           ticker,
           trades,
           totalQuantity,
           averageEntryPrice,
-          isShort: trades[0]?.isShort || false,
-          totalCost
+          isShort,
+          totalCost,
+          totalInvestment: totalCost,
+          totalFees,
+          isOpen
         }
       })
 
