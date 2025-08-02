@@ -6,13 +6,13 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 // User model for authentication and user management
 model User {
-  id          String    @id @default(cuid())
+  id          String    @id @default(uuid())
   username    String    @unique
   password    String    // Hashed password
   email       String?   @unique
@@ -41,7 +41,7 @@ model User {
 
 // Trade model for storing stock trade information
 model Trade {
-  id          String    @id @default(cuid()) // Changed to String for UUID
+  id          String    @id @default(uuid()) // Changed to String for UUID
   ticker      String    // Stock ticker symbol (e.g., AAPL, MSFT)
   entryDate   DateTime  // Date when the trade was entered
   entryPrice  Float     // Price per share at entry
@@ -96,7 +96,7 @@ model Trade {
 
 // Performance model for storing aggregated performance metrics
 model Performance {
-  id              String    @id @default(cuid()) // Changed to String for UUID
+  id              String    @id @default(uuid()) // Changed to String for UUID
   userId          String    // User who owns this performance data
   period          String    // "weekly", "monthly", or "yearly"
   startDate       DateTime  // Start date of the period
@@ -136,7 +136,7 @@ model Performance {
 
 // Trade Pattern Analysis - Stores identified trading patterns
 model TradePattern {
-  id              String    @id @default(cuid()) // Changed to String for UUID
+  id              String    @id @default(uuid()) // Changed to String for UUID
   userId          String    // User who owns this pattern
   patternType     String    // "trend_following", "mean_reversion", "breakout", "volume"
   patternName     String    // Human-readable pattern name
@@ -166,7 +166,7 @@ model TradePattern {
 
 // AI Insights - Stores AI-generated insights for trades
 model TradeInsight {
-  id              String    @id @default(cuid()) // Changed to String for UUID
+  id              String    @id @default(uuid()) // Changed to String for UUID
   tradeId         String    // Reference to the trade
   insightType     String    // "performance", "risk", "pattern", "behavioral"
   insightText     String    // The actual insight text
@@ -191,7 +191,7 @@ model TradeInsight {
 
 // ML Model Metadata - Stores information about trained ML models
 model MLModel {
-  id              String    @id @default(cuid()) // Changed to String for UUID
+  id              String    @id @default(uuid()) // Changed to String for UUID
   userId          String    // User who owns this model
   modelName       String    // Name of the model
   modelVersion    String    // Version string
@@ -220,7 +220,7 @@ model MLModel {
 
 // Trade Predictions - Stores AI predictions for trades
 model TradePrediction {
-  id              String    @id @default(cuid()) // Changed to String for UUID
+  id              String    @id @default(uuid()) // Changed to String for UUID
   tradeId         String    // Reference to the trade
   predictionType  String    // "entry", "exit", "price", "risk"
   predictedValue  Float     // The predicted value
