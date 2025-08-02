@@ -144,18 +144,6 @@ export default function LoginPage() {
               )}
             </button>
           </div>
-
-          <div className="text-center">
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Demo accounts available:
-            </p>
-            <div className="mt-2 text-xs text-gray-500 dark:text-gray-500 space-y-1">
-              <p><strong>zarsko</strong> / passwords-089430732z</p>
-              <p><strong>ido</strong> / passwords-208090</p>
-              <p><strong>dor</strong> / passwords-308090</p>
-              <p><strong>daytrader</strong> / 405060</p>
-            </div>
-          </div>
         </form>
       </div>
     </div>

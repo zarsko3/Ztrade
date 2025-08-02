@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "prisma generate && next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "create-user": "tsx scripts/create-user.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.13.0",
@@ -41,6 +42,7 @@
     "eslint-config-next": "15.4.1",
     "prisma": "^6.13.0",
     "tailwindcss": "^4",
+    "tsx": "^4.19.2",
     "typescript": "^5"
   }
 }

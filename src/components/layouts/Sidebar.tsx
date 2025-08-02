@@ -256,9 +256,6 @@ export function Sidebar() {
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
                   {user?.name || user?.username || 'Trader'}
                 </p>
-                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                  {user?.email || 'trader@ztrade.com'}
-                </p>
               </div>
             </div>
 
