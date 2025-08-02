@@ -29,6 +29,16 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('✅ Calling AuthService.register...');
+    
+    // Check JWT_SECRET before calling AuthService
+    if (!process.env.JWT_SECRET) {
+      console.log('❌ JWT_SECRET not set');
+      return NextResponse.json(
+        { error: 'Server configuration error - JWT_SECRET not set' },
+        { status: 500 }
+      );
+    }
+    
     const result = await AuthService.register({ username, password, email, name });
     console.log('✅ AuthService result:', { success: result.success, message: result.message });
 
