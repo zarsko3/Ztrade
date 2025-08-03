@@ -1,68 +1,91 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { AuthService } from '@/services/auth-service';
-import { PrismaClient } from '@prisma/client';
-
-const prisma = new PrismaClient();
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { username, password, email, name } = body;
-
-    console.log('🔍 Testing registration with:', { username, email, name });
-
-    // Check environment variables
+    console.log('🔍 Test registration request received');
+    
+    // Check environment variables first
     const envCheck = {
       DATABASE_URL: !!process.env.DATABASE_URL,
       JWT_SECRET: !!process.env.JWT_SECRET,
-      NODE_ENV: process.env.NODE_ENV || 'development'
+      JWT_SECRET_LENGTH: process.env.JWT_SECRET?.length || 0,
     };
 
-    // Test database connection
-    let dbConnection = false;
+    console.log('✅ Environment check:', envCheck);
+
+    // Try to parse the request body
+    let body;
     try {
-      await prisma.$connect();
-      dbConnection = true;
-    } catch (error) {
-      console.error('Database connection failed:', error);
+      body = await request.json();
+      console.log('✅ Body parsed:', { 
+        username: body.username, 
+        hasPassword: !!body.password,
+        hasEmail: !!body.email,
+        bodyKeys: Object.keys(body)
+      });
+    } catch (parseError) {
+      console.error('❌ JSON parse error:', parseError);
+      return NextResponse.json(
+        { 
+          error: 'Invalid JSON in request body',
+          debug: { parseError: parseError.message }
+        },
+        { status: 400 }
+      );
     }
 
-    // Test user creation
-    const result = await AuthService.register({ username, password, email, name });
+    const { username, password, email, name } = body;
 
-    // Get user count
-    let userCount = 0;
-    try {
-      userCount = await prisma.user.count();
-    } catch (error) {
-      console.error('Error counting users:', error);
+    // Validate required fields
+    if (!username || !password) {
+      console.log('❌ Missing required fields:', { username: !!username, password: !!password });
+      return NextResponse.json(
+        { 
+          error: 'Username and password are required',
+          debug: { providedFields: Object.keys(body) }
+        },
+        { status: 400 }
+      );
     }
+
+    // Validate username length
+    if (username.length < 3 || username.length > 50) {
+      console.log('❌ Invalid username length:', username.length);
+      return NextResponse.json(
+        { error: 'Username must be between 3 and 50 characters' },
+        { status: 400 }
+      );
+    }
+
+    // Validate password length
+    if (password.length < 6) {
+      console.log('❌ Password too short:', password.length);
+      return NextResponse.json(
+        { error: 'Password must be at least 6 characters' },
+        { status: 400 }
+      );
+    }
+
+    console.log('✅ All validations passed');
 
     return NextResponse.json({
-      success: result.success,
-      message: result.message,
-      user: result.user,
-      debug: {
-        environment: envCheck,
-        databaseConnection: dbConnection,
-        userCount,
-        timestamp: new Date().toISOString()
+      success: true,
+      message: 'Test registration validation passed',
+      data: {
+        username,
+        hasEmail: !!email,
+        hasName: !!name,
+        environment: envCheck
       }
     });
   } catch (error) {
-    console.error('Test registration error:', error);
+    console.error('❌ Test registration error:', error);
     return NextResponse.json(
       { 
-        success: false, 
         error: 'Internal server error',
-        debug: {
-          error: error instanceof Error ? error.message : 'Unknown error',
-          timestamp: new Date().toISOString()
-        }
+        debug: { error: error.message }
       },
       { status: 500 }
     );
-  } finally {
-    await prisma.$disconnect();
   }
 } 

@@ -5,25 +5,23 @@ export async function GET(request: NextRequest) {
     const envCheck = {
       DATABASE_URL: !!process.env.DATABASE_URL,
       JWT_SECRET: !!process.env.JWT_SECRET,
-      NODE_ENV: process.env.NODE_ENV || 'development',
-      timestamp: new Date().toISOString()
+      JWT_SECRET_LENGTH: process.env.JWT_SECRET?.length || 0,
+      NODE_ENV: process.env.NODE_ENV,
+      NEXT_PUBLIC_SUPABASE_URL: !!process.env.NEXT_PUBLIC_SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      DATABASE_URL_STARTS_WITH: process.env.DATABASE_URL?.substring(0, 20) || 'NOT_SET',
+      IS_PRODUCTION: process.env.NODE_ENV === 'production',
     };
-
-    console.log('🔍 Environment check:', envCheck);
 
     return NextResponse.json({
       success: true,
       environment: envCheck,
-      message: 'Environment variables check'
+      message: 'Environment variables check completed'
     });
   } catch (error) {
-    console.error('❌ Environment check error:', error);
+    console.error('Environment check error:', error);
     return NextResponse.json(
-      { 
-        success: false, 
-        error: 'Environment check failed',
-        debug: { error: error.message }
-      },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }
