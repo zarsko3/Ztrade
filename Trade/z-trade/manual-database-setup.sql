@@ -8,7 +8,6 @@ CREATE TABLE IF NOT EXISTS "User" (
   password TEXT NOT NULL,
   email TEXT UNIQUE,
   name TEXT,
-  "isActive" BOOLEAN DEFAULT true,
   role TEXT DEFAULT 'user',
   "createdAt" TIMESTAMP DEFAULT now(),
   "updatedAt" TIMESTAMP DEFAULT now(),
@@ -42,13 +41,12 @@ CREATE INDEX IF NOT EXISTS "Trade_status_idx" ON "Trade"(status);
 
 -- Step 4: Create zarsko user with password '123456' (bcrypt hash)
 -- This hash was generated with bcrypt using 12 salt rounds
-INSERT INTO "User" (username, password, email, name, "isActive", role) 
+INSERT INTO "User" (username, password, email, name, role) 
 VALUES (
   'zarsko', 
   '$2a$12$rQj.8nKvnH8fYhW9.yUhS.DGYvyFzV5QnxGYvE6ZGQdCvGNqVHJhi', -- This is '123456' hashed
   'zarsko@example.com', 
   'Zarsko User', 
-  true, 
   'user'
 ) ON CONFLICT (username) DO NOTHING;
 
@@ -57,7 +55,6 @@ SELECT
   id, 
   username, 
   email, 
-  "isActive", 
   role, 
   "createdAt"
 FROM "User" 
@@ -68,7 +65,6 @@ SELECT
   id, 
   username, 
   email, 
-  "isActive", 
   role, 
   "createdAt"
 FROM "User"; 
