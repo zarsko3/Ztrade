@@ -1,0 +1,38 @@
+# CORRECTED .env.local FILE - Copy this content to your .env.local file
+
+# Application Configuration
+NEXT_PUBLIC_APP_NAME=Z-Trade
+NEXT_PUBLIC_API_URL=http://localhost:3000/api
+NODE_ENV=development
+
+# Database Configuration (Supabase - Direct Connection)
+DATABASE_URL=postgresql://postgres:089430732zG28$@db.khfzxzkpdxxsxhbmntel.supabase.co:5432/postgres
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL=https://khfzxzkpdxxsxhbmntel.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoZnp4emtwZHh4c3hoYm1udGVsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTM5NTc4MjYsImV4cCI6MjA2OTUzMzgyNn0.rosbfFhNjsRxh2WAjZDNHLbvDGx1ZAtrCMsgLy2XB1w
+SUPABASE_SERVICE_ROLE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtoZnp4emtwZHh4c3hoYm1udGVsIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1Mzk1NzgyNiwiZXhwIjoyMDY5NTMzODI2fQ.bU6PXezttlbuWrdjeFzh2wmRSVTmiZ8nNJCP5qoIW3s
+
+# JWT Configuration (REQUIRED for authentication)
+JWT_SECRET=4369fc69-2649-40af-94d5-b6b36fda2b90
+
+# API Keys
+ALPHA_VANTAGE_API_KEY=BRU6Z62FCQ2NYE5B
+CHART_IMG_API_KEY=yd9yWy1hPb33TaWsl4a7b72SYURTDMow5n6pnhzq
+
+# Cache Configuration
+CHART_CACHE_TTL=3600
+CHART_MAX_RETRIES=3
+CHART_RETRY_DELAY=1000
+MARKET_DATA_CACHE_TTL=1800
+MARKET_DATA_MAX_RETRIES=3
+MARKET_DATA_RETRY_DELAY=1000
+
+# Optional: Redis Configuration
+REDIS_URL=redis://localhost:6379
+REDIS_PASSWORD=your-redis-password-here
+
+# Optional: Additional API Keys (set these if needed)
+YAHOO_FINANCE_API_KEY=your-yahoo-finance-api-key-here
+FINNHUB_API_KEY=your-finnhub-api-key-here
+FEAR_GREED_API_KEY=your-fear-greed-api-key-here 
