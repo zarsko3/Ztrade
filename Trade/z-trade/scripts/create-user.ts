@@ -1,37 +1,53 @@
-import { AuthService } from '../src/services/auth-service';
+import { PrismaClient } from '@prisma/client';
+import bcrypt from 'bcryptjs';
+
+const prisma = new PrismaClient();
 
 async function createUser() {
-  const args = process.argv.slice(2);
-  
-  if (args.length < 2) {
-    console.log('Usage: npm run create-user <username> <password> [email] [name]');
-    console.log('Example: npm run create-user admin password123 admin@example.com "Admin User"');
-    process.exit(1);
-  }
-
-  const [username, password, email, name] = args;
-
   try {
-    console.log('Creating user...');
-    const result = await AuthService.register({
-      username,
-      password,
-      email: email || undefined,
-      name: name || undefined
+    console.log('🔍 Creating user: zarsko');
+    
+    // Check if user already exists
+    const existingUser = await prisma.user.findUnique({
+      where: { username: 'zarsko' }
     });
 
-    if (result.success) {
-      console.log('✅ User created successfully!');
-      console.log(`Username: ${username}`);
-      if (email) console.log(`Email: ${email}`);
-      if (name) console.log(`Name: ${name}`);
-    } else {
-      console.error('❌ Failed to create user:', result.message);
-      process.exit(1);
+    if (existingUser) {
+      console.log('❌ User zarsko already exists');
+      return;
     }
+
+    // Hash password
+    const saltRounds = 12;
+    const hashedPassword = await bcrypt.hash('123456', saltRounds);
+    
+    console.log('✅ Password hashed successfully');
+
+    // Create user
+    const user = await prisma.user.create({
+      data: {
+        username: 'zarsko',
+        password: hashedPassword,
+        email: 'zarsko@example.com',
+        name: 'Zarsko User',
+        isActive: true,
+        role: 'user'
+      }
+    });
+
+    console.log('✅ User created successfully:', {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      role: user.role,
+      isActive: user.isActive,
+      createdAt: user.createdAt
+    });
+
   } catch (error) {
     console.error('❌ Error creating user:', error);
-    process.exit(1);
+  } finally {
+    await prisma.$disconnect();
   }
 }
 
