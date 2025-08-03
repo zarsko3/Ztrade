@@ -1,0 +1,33 @@
+# Copy this file to .env.local and fill in your values
+
+# App Configuration
+NEXT_PUBLIC_APP_NAME="Z-Trade"
+NEXT_PUBLIC_API_URL="http://localhost:3000/api"
+NODE_ENV="development"
+
+# Database Configuration (Supabase)
+DATABASE_URL="postgresql://postgres:[YOUR-PASSWORD]@db.[YOUR-PROJECT-REF].supabase.co:5432/postgres"
+
+# Authentication
+JWT_SECRET="your-super-secret-jwt-key-change-this-in-production-min-32-characters"
+
+# Supabase Configuration
+NEXT_PUBLIC_SUPABASE_URL="https://[YOUR-PROJECT-REF].supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY="[YOUR-ANON-KEY]"
+SUPABASE_SERVICE_ROLE_KEY="[YOUR-SERVICE-ROLE-KEY]"
+
+# API Keys (Optional for basic signup)
+ALPHA_VANTAGE_API_KEY="[YOUR-ALPHA-VANTAGE-KEY]"
+CHART_IMG_API_KEY="[YOUR-CHART-IMG-KEY]"
+
+# Redis Configuration (Optional for development)
+REDIS_URL="redis://localhost:6379"
+REDIS_PASSWORD=""
+
+# Cache Configuration
+CHART_CACHE_TTL="3600"
+CHART_MAX_RETRIES="3"
+CHART_RETRY_DELAY="1000"
+MARKET_DATA_CACHE_TTL="1800"
+MARKET_DATA_MAX_RETRIES="3"
+MARKET_DATA_RETRY_DELAY="1000" 
