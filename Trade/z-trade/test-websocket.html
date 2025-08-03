@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Test</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 5px; }
+        .connected { background-color: #d4edda; color: #155724; }
+        .disconnected { background-color: #f8d7da; color: #721c24; }
+        .data { background-color: #d1ecf1; color: #0c5460; margin: 10px 0; padding: 10px; border-radius: 5px; }
+        button { padding: 10px 20px; margin: 5px; border: none; border-radius: 5px; cursor: pointer; }
+        .connect { background-color: #28a745; color: white; }
+        .disconnect { background-color: #dc3545; color: white; }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Connection Test</h1>
+    
+    <div id="status" class="status disconnected">
+        Status: Disconnected
+    </div>
+    
+    <div>
+        <button class="connect" onclick="connect()">Connect</button>
+        <button class="disconnect" onclick="disconnect()">Disconnect</button>
+    </div>
+    
+    <div id="data" class="data">
+        <h3>Received Data:</h3>
+        <div id="messages"></div>
+    </div>
+
+    <script>
+        let socket = null;
+        const statusDiv = document.getElementById('status');
+        const messagesDiv = document.getElementById('messages');
+
+        function updateStatus(connected) {
+            statusDiv.className = `status ${connected ? 'connected' : 'disconnected'}`;
+            statusDiv.textContent = `Status: ${connected ? 'Connected' : 'Disconnected'}`;
+        }
+
+        function addMessage(message) {
+            const div = document.createElement('div');
+            div.textContent = `${new Date().toLocaleTimeString()}: ${message}`;
+            messagesDiv.appendChild(div);
+        }
+
+        function connect() {
+            if (socket) {
+                socket.disconnect();
+            }
+
+            socket = io('http://localhost:3000', {
+                transports: ['polling'],
+                timeout: 5000
+            });
+
+            socket.on('connect', () => {
+                updateStatus(true);
+                addMessage('Connected to WebSocket server');
+                
+                // Subscribe to market data
+                socket.emit('subscribe-market-data', ['AAPL', 'GOOGL']);
+                addMessage('Subscribed to market data');
+            });
+
+            socket.on('disconnect', () => {
+                updateStatus(false);
+                addMessage('Disconnected from WebSocket server');
+            });
+
+            socket.on('connect_error', (error) => {
+                updateStatus(false);
+                addMessage(`Connection error: ${error.message}`);
+            });
+
+            socket.on('market-data-update', (data) => {
+                addMessage(`Market data received: ${JSON.stringify(data, null, 2)}`);
+            });
+
+            socket.on('trade-update', (data) => {
+                addMessage(`Trade update received: ${JSON.stringify(data, null, 2)}`);
+            });
+
+            socket.on('performance-update', (data) => {
+                addMessage(`Performance update received: ${JSON.stringify(data, null, 2)}`);
+            });
+        }
+
+        function disconnect() {
+            if (socket) {
+                socket.disconnect();
+                socket = null;
+            }
+        }
+
+        // Auto-connect on page load
+        window.onload = connect;
+    </script>
+</body>
+</html> 
