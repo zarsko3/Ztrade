@@ -1,0 +1,9 @@
+{
+  "scripts": {
+    "dev": "cd Trade/z-trade && npm run dev",
+    "dev:next": "cd Trade/z-trade && npm run dev:next"
+  },
+  "devDependencies": {
+    "ts-node": "^10.9.2"
+  }
+}
