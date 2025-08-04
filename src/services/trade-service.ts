@@ -1,32 +1,11 @@
 import { TradeWithCalculations, TradeListRequest, TradeListResponse, CreateTradeRequest, UpdateTradeRequest, Position, AddToPositionRequest } from '@/types/trade';
-import { SupabaseService } from './supabase-service';
+import { prisma } from '@/lib/prisma';
 
 export class TradeService {
-  private supabaseService: SupabaseService;
-  private isInitialized = false;
-
-  constructor() {
-    this.supabaseService = SupabaseService.getInstance();
-  }
-
-  private async ensureInitialized() {
-    if (!this.isInitialized) {
-      try {
-        await this.supabaseService.initializeDatabase();
-        await this.supabaseService.seedDatabase();
-        this.isInitialized = true;
-      } catch (error) {
-        console.error('Error initializing database:', error);
-      }
-    }
-  }
-
   /**
    * Get paginated list of trades with filtering and sorting
    */
   async getTrades(request: TradeListRequest): Promise<TradeListResponse> {
-    await this.ensureInitialized();
-    
     const {
       page = 1,
       limit = 10,
@@ -46,6 +25,10 @@ export class TradeService {
     // Add user filter for data isolation
     if (userId) {
       where.userId = userId;
+    }
+
+    if (ticker) {
+      where.ticker = { contains: ticker.toUpperCase() };
     }
 
     if (startDate || endDate) {
@@ -69,122 +52,136 @@ export class TradeService {
     if (search) {
       where.OR = [
         { ticker: { contains: search.toUpperCase() } },
-        { notes: { contains: search, mode: 'insensitive' } },
-        { tags: { contains: search, mode: 'insensitive' } }
+        { notes: { contains: search } },
+        { tags: { contains: search } }
       ];
     }
-
-    // Build order by clause
-    const orderBy: any = {};
-    orderBy[sortBy] = sortOrder;
 
     // Calculate pagination
     const skip = (page - 1) * limit;
 
-    // Get trades from Supabase
-    const result = await this.supabaseService.getTrades(page, limit, {
-      ticker,
-      status,
-      startDate,
-      endDate,
-      search,
-      userId
-    });
+    try {
+      // Get total count
+      const total = await prisma.trade.count({ where });
 
-    const tradesWithCalculations = result.trades;
-    const total = result.total;
+      // Get trades with pagination and sorting
+      const trades = await prisma.trade.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { [sortBy]: sortOrder },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              username: true
+            }
+          }
+        }
+      });
 
-    // Calculate pagination metadata
-    const totalPages = Math.ceil(total / limit);
-    const hasNext = page < totalPages;
-    const hasPrev = page > 1;
+      // Calculate trade metrics
+      const tradesWithCalculations = trades.map(trade => this.calculateTradeMetrics(trade));
 
-    return {
-      trades: tradesWithCalculations,
-      pagination: {
-        page,
-        limit,
-        total,
-        totalPages,
-        hasNext,
-        hasPrev
-      }
-    };
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(total / limit);
+      const hasNext = page < totalPages;
+      const hasPrev = page > 1;
+
+      return {
+        trades: tradesWithCalculations,
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext,
+          hasPrev
+        }
+      };
+    } catch (error) {
+      console.error('Error fetching trades:', error);
+      throw new Error('Failed to fetch trades');
+    }
   }
 
   /**
    * Get a single trade by ID
    */
   async getTradeById(id: string): Promise<TradeWithCalculations | null> {
-    await this.ensureInitialized();
     try {
-      return await this.supabaseService.getTradeById(id);
+      const trade = await prisma.trade.findUnique({
+        where: { id },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              username: true
+            }
+          }
+        }
+      });
+
+      return trade ? this.calculateTradeMetrics(trade) : null;
     } catch (error) {
-      console.error('Error getting trade by ID:', error);
-      return null;
+      console.error('Error fetching trade by ID:', error);
+      throw new Error('Failed to fetch trade');
     }
   }
 
   /**
-   * Get position for a specific ticker
+   * Get current position for a ticker
    */
-  async getPosition(ticker: string): Promise<Position | null> {
-    await this.ensureInitialized();
+  async getPosition(ticker: string, userId: string): Promise<Position | null> {
     try {
-      const positions = await this.supabaseService.getPositions();
-      const position = positions.find(p => p.ticker === ticker.toUpperCase());
-      
-      if (!position) {
+      const openTrades = await prisma.trade.findMany({
+        where: {
+          ticker: ticker.toUpperCase(),
+          userId,
+          exitDate: null
+        },
+        orderBy: { entryDate: 'asc' }
+      });
+
+      if (openTrades.length === 0) {
         return null;
       }
 
-      // Calculate current value and unrealized P&L
-      let currentValue = 0;
-      let unrealizedPnL = 0;
-      let unrealizedPnLPercentage = 0;
-
-      try {
-        // Fetch current market price
-        const response = await fetch(`/api/market-data/quote?symbol=${ticker.toUpperCase()}`);
-        if (response.ok) {
-          const data = await response.json();
-          if (data.status === 'success' && data.data) {
-            const currentPrice = data.data.regularMarketPrice;
-            currentValue = position.totalQuantity * currentPrice;
-            
-            if (position.isShort) {
-              unrealizedPnL = (position.totalCost || 0) - currentValue;
-            } else {
-              unrealizedPnL = currentValue - (position.totalCost || 0);
-            }
-            
-            unrealizedPnLPercentage = (position.totalCost || 0) > 0 ? (unrealizedPnL / (position.totalCost || 1)) * 100 : 0;
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching current price for position:', error);
-      }
+      // Calculate position metrics
+      const totalQuantity = openTrades.reduce((sum, trade) => sum + trade.quantity, 0);
+      const totalCost = openTrades.reduce((sum, trade) => sum + (trade.entryPrice * trade.quantity), 0);
+      const averagePrice = totalCost / totalQuantity;
 
       return {
-        ...position,
-        currentValue,
-        unrealizedPnL,
-        unrealizedPnLPercentage
+        ticker: ticker.toUpperCase(),
+        quantity: totalQuantity,
+        averagePrice,
+        totalCost,
+        trades: openTrades.map(trade => this.calculateTradeMetrics(trade))
       };
     } catch (error) {
-      console.error('Error getting position:', error);
-      return null;
+      console.error('Error fetching position:', error);
+      throw new Error('Failed to fetch position');
     }
   }
 
   /**
-   * Check if a position exists for a ticker
+   * Check if user has an open position for a ticker
    */
-  async hasOpenPosition(ticker: string): Promise<boolean> {
-    await this.ensureInitialized();
+  async hasOpenPosition(ticker: string, userId: string): Promise<boolean> {
     try {
-      const positions = await this.supabaseService.getPositions();
-      return positions.some(p => p.ticker === ticker.toUpperCase());
+      const count = await prisma.trade.count({
+        where: {
+          ticker: ticker.toUpperCase(),
+          userId,
+          exitDate: null
+        }
+      });
+      return count > 0;
     } catch (error) {
       console.error('Error checking open position:', error);
       return false;
@@ -192,39 +189,74 @@ export class TradeService {
   }
 
   /**
-   * Add to an existing position
+   * Add to existing position
    */
   async addToPosition(data: AddToPositionRequest): Promise<Position> {
-    await this.ensureInitialized();
     try {
-      // Create the new trade using Supabase
-      await this.supabaseService.addToPosition(data);
+      // Create new trade entry
+      const trade = await prisma.trade.create({
+        data: {
+          ticker: data.ticker.toUpperCase(),
+          entryDate: new Date(data.entryDate),
+          entryPrice: data.entryPrice,
+          quantity: data.quantity,
+          fees: data.fees,
+          notes: data.notes,
+          tags: data.tags,
+          isShort: data.isShort || false,
+          userId: data.userId
+        }
+      });
 
-      // Get the updated position
-      const position = await this.getPosition(data.ticker);
-      if (!position) {
-        throw new Error('Failed to retrieve updated position');
-      }
-
-      return position;
+      // Return updated position
+      return await this.getPosition(data.ticker, data.userId) || {
+        ticker: data.ticker.toUpperCase(),
+        quantity: data.quantity,
+        averagePrice: data.entryPrice,
+        totalCost: data.entryPrice * data.quantity,
+        trades: [this.calculateTradeMetrics(trade)]
+      };
     } catch (error) {
       console.error('Error adding to position:', error);
-      throw error;
+      throw new Error('Failed to add to position');
     }
   }
-
-
 
   /**
    * Create a new trade
    */
   async createTrade(data: CreateTradeRequest): Promise<TradeWithCalculations> {
-    await this.ensureInitialized();
     try {
-      return await this.supabaseService.createTrade(data);
+      const trade = await prisma.trade.create({
+        data: {
+          ticker: data.ticker.toUpperCase(),
+          entryDate: new Date(data.entryDate),
+          entryPrice: data.entryPrice,
+          exitDate: data.exitDate ? new Date(data.exitDate) : null,
+          exitPrice: data.exitPrice,
+          quantity: data.quantity,
+          fees: data.fees,
+          notes: data.notes,
+          tags: data.tags,
+          isShort: data.isShort || false,
+          userId: data.userId
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              username: true
+            }
+          }
+        }
+      });
+
+      return this.calculateTradeMetrics(trade);
     } catch (error) {
       console.error('Error creating trade:', error);
-      throw error;
+      throw new Error('Failed to create trade');
     }
   }
 
@@ -233,10 +265,30 @@ export class TradeService {
    */
   async updateTrade(id: string, data: UpdateTradeRequest): Promise<TradeWithCalculations> {
     try {
-      return await this.supabaseService.updateTrade(id, data);
+      const trade = await prisma.trade.update({
+        where: { id },
+        data: {
+          ...data,
+          entryDate: data.entryDate ? new Date(data.entryDate) : undefined,
+          exitDate: data.exitDate ? new Date(data.exitDate) : undefined,
+          ticker: data.ticker ? data.ticker.toUpperCase() : undefined
+        },
+        include: {
+          user: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              username: true
+            }
+          }
+        }
+      });
+
+      return this.calculateTradeMetrics(trade);
     } catch (error) {
       console.error('Error updating trade:', error);
-      throw error;
+      throw new Error('Failed to update trade');
     }
   }
 
@@ -245,7 +297,10 @@ export class TradeService {
    */
   async deleteTrade(id: string): Promise<boolean> {
     try {
-      return await this.supabaseService.deleteTrade(id);
+      await prisma.trade.delete({
+        where: { id }
+      });
+      return true;
     } catch (error) {
       console.error('Error deleting trade:', error);
       return false;
@@ -255,7 +310,7 @@ export class TradeService {
   /**
    * Get trade statistics
    */
-  async getTradeStats(): Promise<{
+  async getTradeStats(userId: string): Promise<{
     totalTrades: number;
     openTrades: number;
     closedTrades: number;
@@ -264,28 +319,21 @@ export class TradeService {
     winRate: number;
   }> {
     try {
-      // Get all trades
-      const result = await this.supabaseService.getTrades(1, 1000); // Get all trades
-      const trades = result.trades;
-      
-      const totalTrades = trades.length;
-      const openTrades = trades.filter(t => t.isOpen).length;
-      const closedTrades = trades.filter(t => !t.isOpen).length;
+      const [totalTrades, openTrades, closedTrades] = await Promise.all([
+        prisma.trade.count({ where: { userId } }),
+        prisma.trade.count({ where: { userId, exitDate: null } }),
+        prisma.trade.count({ where: { userId, exitDate: { not: null } } })
+      ]);
 
-      // Calculate profit/loss for closed trades
-      let totalProfitLoss = 0;
-      let winningTrades = 0;
-
-      trades.forEach(trade => {
-        if (!trade.isOpen && trade.profitLoss !== null && trade.profitLoss !== undefined) {
-          totalProfitLoss += trade.profitLoss;
-          if (trade.profitLoss > 0) {
-            winningTrades++;
-          }
-        }
+      // Get all closed trades for profit/loss calculation
+      const closedTradesData = await prisma.trade.findMany({
+        where: { userId, exitDate: { not: null } }
       });
 
+      const tradesWithCalculations = closedTradesData.map(trade => this.calculateTradeMetrics(trade));
+      const totalProfitLoss = tradesWithCalculations.reduce((sum, trade) => sum + (trade.profitLoss || 0), 0);
       const averageProfitLoss = closedTrades > 0 ? totalProfitLoss / closedTrades : 0;
+      const winningTrades = tradesWithCalculations.filter(trade => (trade.profitLoss || 0) > 0).length;
       const winRate = closedTrades > 0 ? (winningTrades / closedTrades) * 100 : 0;
 
       return {
@@ -297,16 +345,40 @@ export class TradeService {
         winRate
       };
     } catch (error) {
-      console.error('Error getting trade stats:', error);
-      return {
-        totalTrades: 0,
-        openTrades: 0,
-        closedTrades: 0,
-        totalProfitLoss: 0,
-        averageProfitLoss: 0,
-        winRate: 0
-      };
+      console.error('Error fetching trade stats:', error);
+      throw new Error('Failed to fetch trade statistics');
     }
+  }
+
+  /**
+   * Calculate trade metrics
+   */
+  private calculateTradeMetrics(trade: any): TradeWithCalculations {
+    const entryValue = trade.entryPrice * trade.quantity;
+    const exitValue = trade.exitPrice ? trade.exitPrice * trade.quantity : null;
+    const fees = trade.fees || 0;
+
+    let profitLoss = null;
+    let profitLossPercentage = null;
+    let isWinningTrade = null;
+
+    if (exitValue !== null) {
+      profitLoss = trade.isShort 
+        ? entryValue - exitValue - fees 
+        : exitValue - entryValue - fees;
+      profitLossPercentage = (profitLoss / entryValue) * 100;
+      isWinningTrade = profitLoss > 0;
+    }
+
+    return {
+      ...trade,
+      entryValue,
+      exitValue,
+      profitLoss,
+      profitLossPercentage,
+      isWinningTrade,
+      fees
+    };
   }
 }
 
