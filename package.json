@@ -11,6 +11,7 @@
     "debug-auth": "tsx scripts/debug-auth.ts"
   },
   "dependencies": {
+    "@clerk/nextjs": "^6.28.1",
     "@prisma/client": "^6.13.0",
     "@stagewise-plugins/react": "^0.6.2",
     "@stagewise/toolbar-next": "^0.6.2",

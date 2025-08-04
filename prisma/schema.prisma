@@ -6,17 +6,18 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
-// User model for authentication and user management
+// User model for Clerk integration
 model User {
-  id          String    @id @default(uuid())
-  username    String    @unique
-  password    String    // Hashed password
+  id          String    @id // This will be Clerk's user ID
   email       String?   @unique
-  name        String?
+  firstName   String?
+  lastName    String?
+  username    String?   @unique
+  imageUrl    String?
   isActive    Boolean   @default(true)
   role        String    @default("user") // "user", "admin"
   
@@ -29,13 +30,12 @@ model User {
   trades      Trade[]
   
   // Indexes
-  @@index([username])
   @@index([email])
+  @@index([username])
   @@index([isActive])
   
   // Validation rules:
-  // - username: must be unique, 3-50 characters
-  // - password: must be hashed
+  // - id: must be Clerk's user ID
   // - email: must be valid email format when provided
 }
 

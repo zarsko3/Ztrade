@@ -4,6 +4,13 @@ import Link from 'next/link';
 import { SimpleThemeToggle } from '@/components/ui/SimpleThemeToggle';
 import { NotificationBell } from '@/components/NotificationSystem';
 import { TrendingUp } from 'lucide-react';
+import {
+  SignInButton,
+  SignUpButton,
+  SignedIn,
+  SignedOut,
+  UserButton,
+} from "@clerk/nextjs";
 
 export function Header() {
   return (
@@ -46,6 +53,27 @@ export function Header() {
           <div className="bg-gray-50 dark:bg-gray-800 rounded-xl p-1">
             <SimpleThemeToggle />
           </div>
+          <SignedOut>
+            <SignInButton mode="modal">
+              <button className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-medium transition-colors duration-200">
+                Sign In
+              </button>
+            </SignInButton>
+            <SignUpButton mode="modal">
+              <button className="px-4 py-2 bg-gray-900 dark:bg-white text-white dark:text-gray-900 rounded-xl text-sm font-medium transition-colors duration-200">
+                Sign Up
+              </button>
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
+            <UserButton 
+              appearance={{
+                elements: {
+                  avatarBox: "w-8 h-8 rounded-xl"
+                }
+              }}
+            />
+          </SignedIn>
         </div>
       </div>
     </header>
