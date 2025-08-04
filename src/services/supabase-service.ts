@@ -70,30 +70,51 @@ export class SupabaseService {
   }
 
   // Get all trades with filtering and pagination
-  async getTrades(page: number = 1, limit: number = 20, filters?: any): Promise<{ trades: TradeWithCalculations[], total: number }> {
+  async getTrades(request: any): Promise<{ trades: TradeWithCalculations[], pagination: any }> {
     try {
+      const {
+        page = 1,
+        limit = 20,
+        sortBy = 'entryDate',
+        sortOrder = 'desc',
+        ticker,
+        startDate,
+        endDate,
+        status = 'all',
+        search,
+        userId
+      } = request;
+
       let query = supabase
         .from(TABLES.TRADES)
         .select('*', { count: 'exact' })
 
       // Apply user filter for data isolation
-      if (filters?.userId) {
-        query = query.eq('user_id', filters.userId)
+      if (userId) {
+        query = query.eq('user_id', userId)
       }
 
       // Apply filters
-      if (filters?.ticker) {
-        query = query.ilike('ticker', `%${filters.ticker}%`)
+      if (ticker) {
+        query = query.ilike('ticker', `%${ticker}%`)
       }
-      if (filters?.status) {
-        if (filters.status === 'open') {
+      if (status !== 'all') {
+        if (status === 'open') {
           query = query.is('exit_date', null)
-        } else if (filters.status === 'closed') {
+        } else if (status === 'closed') {
           query = query.not('exit_date', 'is', null)
         }
       }
-      if (filters?.isShort !== undefined) {
-        query = query.eq('is_short', filters.isShort)
+      if (startDate || endDate) {
+        if (startDate) {
+          query = query.gte('entry_date', startDate)
+        }
+        if (endDate) {
+          query = query.lte('entry_date', endDate)
+        }
+      }
+      if (search) {
+        query = query.or(`ticker.ilike.%${search}%,notes.ilike.%${search}%,tags.ilike.%${search}%`)
       }
 
       // Apply pagination
@@ -101,7 +122,10 @@ export class SupabaseService {
       query = query.range(offset, offset + limit - 1)
 
       // Apply sorting
-      query = query.order('entry_date', { ascending: false })
+      const sortColumn = sortBy === 'entryDate' ? 'entry_date' : 
+                        sortBy === 'ticker' ? 'ticker' : 
+                        sortBy === 'createdAt' ? 'created_at' : 'entry_date';
+      query = query.order(sortColumn, { ascending: sortOrder === 'asc' })
 
       const { data, error, count } = await query
 
@@ -111,7 +135,24 @@ export class SupabaseService {
       }
 
       const trades = data?.map(trade => this.mapDatabaseTradeToTrade(trade)) || []
-      return { trades, total: count || 0 }
+      const total = count || 0;
+      
+      // Calculate pagination metadata
+      const totalPages = Math.ceil(total / limit);
+      const hasNext = page < totalPages;
+      const hasPrev = page > 1;
+
+      return { 
+        trades, 
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+          hasNext,
+          hasPrev
+        }
+      }
     } catch (error) {
       console.error('SupabaseService getTrades error:', error)
       throw error
@@ -291,6 +332,107 @@ export class SupabaseService {
     } catch (error) {
       console.error('SupabaseService addToPosition error:', error)
       throw error
+    }
+  }
+
+  // Get current position for a ticker
+  async getPosition(ticker: string, userId: string): Promise<any> {
+    try {
+      const { data, error } = await supabase
+        .from(TABLES.TRADES)
+        .select('*')
+        .eq('ticker', ticker.toUpperCase())
+        .eq('user_id', userId)
+        .is('exit_date', null)
+        .order('entry_date', { ascending: true })
+
+      if (error) {
+        console.error('Error fetching position:', error)
+        return null
+      }
+
+      if (!data || data.length === 0) {
+        return null
+      }
+
+      // Calculate position metrics
+      const totalQuantity = data.reduce((sum, trade) => sum + trade.quantity, 0)
+      const totalCost = data.reduce((sum, trade) => sum + (trade.entry_price * trade.quantity), 0)
+      const averagePrice = totalCost / totalQuantity
+
+      return {
+        ticker: ticker.toUpperCase(),
+        quantity: totalQuantity,
+        averagePrice,
+        totalCost,
+        trades: data.map(trade => this.mapDatabaseTradeToTrade(trade))
+      }
+    } catch (error) {
+      console.error('SupabaseService getPosition error:', error)
+      return null
+    }
+  }
+
+  // Check if user has an open position for a ticker
+  async hasOpenPosition(ticker: string, userId: string): Promise<boolean> {
+    try {
+      const { count, error } = await supabase
+        .from(TABLES.TRADES)
+        .select('*', { count: 'exact', head: true })
+        .eq('ticker', ticker.toUpperCase())
+        .eq('user_id', userId)
+        .is('exit_date', null)
+
+      if (error) {
+        console.error('Error checking open position:', error)
+        return false
+      }
+
+      return (count || 0) > 0
+    } catch (error) {
+      console.error('SupabaseService hasOpenPosition error:', error)
+      return false
+    }
+  }
+
+  // Get trade statistics
+  async getTradeStats(userId: string): Promise<any> {
+    try {
+      // Get all trades for the user
+      const { data, error } = await supabase
+        .from(TABLES.TRADES)
+        .select('*')
+        .eq('user_id', userId)
+
+      if (error) {
+        console.error('Error fetching trade stats:', error)
+        throw new Error('Failed to fetch trade statistics')
+      }
+
+      const trades = data?.map(trade => this.mapDatabaseTradeToTrade(trade)) || []
+      
+      const totalTrades = trades.length
+      const openTrades = trades.filter(t => t.isOpen).length
+      const closedTrades = trades.filter(t => !t.isOpen).length
+
+      // Calculate profit/loss for closed trades
+      const closedTradesData = trades.filter(t => !t.isOpen)
+      const totalProfitLoss = closedTradesData.reduce((sum, trade) => sum + (trade.profitLoss || 0), 0)
+      const averageProfitLoss = closedTrades > 0 ? totalProfitLoss / closedTrades : 0
+      const winningTrades = closedTradesData.filter(trade => (trade.profitLoss || 0) > 0).length
+      const winRate = closedTrades > 0 ? (winningTrades / closedTrades) * 100 : 0
+
+      return {
+        totalTrades,
+        openTrades,
+        closedTrades,
+        totalProfitLoss,
+        averageProfitLoss,
+        winRate
+      }
+    } catch (error) {
+      console.error('SupabaseService getTradeStats error:', error)
+      throw new Error('Failed to fetch trade statistics')
     }
   }
 

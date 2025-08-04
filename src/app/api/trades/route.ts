@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { tradeService } from '@/services/trade-service';
+import { tradeService } from '@/services/trade-service-factory';
 import { TradeListRequest } from '@/types/trade';
 // import { emitTradeUpdate, createTradeUpdate } from '@/lib/websocket-utils';
 import { auth } from '@clerk/nextjs/server';
