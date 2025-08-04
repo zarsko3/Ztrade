@@ -1,12 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tradeService } from '@/services/trade-service';
 import { emitTradeUpdate, createTradeUpdate } from '@/lib/websocket-utils';
+import { auth } from '@clerk/nextjs/server';
 
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
 
     // Validate trade ID
@@ -49,6 +59,15 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     
     if (!id || typeof id !== 'string') {
@@ -258,6 +277,15 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     
     if (!id || typeof id !== 'string') {

@@ -1,17 +1,29 @@
 import { TradeAnalysisService } from '@/services/trade-analysis-service';
 import { prisma } from '@/lib/prisma';
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 
 // Import Trade type from the service
 type Trade = Parameters<typeof TradeAnalysisService.generateTradeAnalysis>[0][0];
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { timeframe = 'all', ticker } = body;
 
     // Build query based on timeframe
-    const whereClause: Record<string, unknown> = {};
+    const whereClause: Record<string, unknown> = {
+      userId: userId, // Add user ID filter
+    };
     
     if (timeframe !== 'all') {
       const now = new Date();

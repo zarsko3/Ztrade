@@ -1,9 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { performanceAnalysisService } from '@/services/performance-analysis-service';
+import { auth } from '@clerk/nextjs/server';
 
 export async function GET(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const ticker = searchParams.get('ticker');
     const startYear = searchParams.get('startYear') ? parseInt(searchParams.get('startYear')!) : 2020;
@@ -20,6 +30,7 @@ export async function GET(request: NextRequest) {
 
     // Build filters
     const whereClause: any = {
+      userId: userId, // Add user ID filter
       exitDate: {
         not: null,
       },

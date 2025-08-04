@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ExportService, ExportOptions } from '@/services/export-service';
+import { auth } from '@clerk/nextjs/server';
 
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { type, dateRange, ticker, includeOpenPositions, format = 'xlsx' }: ExportOptions = body;
 
@@ -103,6 +113,15 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    const { userId } = await auth();
+    
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Authentication required' },
+        { status: 401 }
+      );
+    }
+
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type') as 'trades' | 'performance' | 'analytics';
     const startDate = searchParams.get('startDate');

@@ -2,13 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { tradeService } from '@/services/trade-service';
 import { TradeListRequest } from '@/types/trade';
 import { emitTradeUpdate, createTradeUpdate } from '@/lib/websocket-utils';
-import { authenticateRequest } from '@/lib/auth-middleware';
+import { auth } from '@clerk/nextjs/server';
 
 async function GET(request: NextRequest) {
   try {
-    const authenticatedRequest = await authenticateRequest(request);
+    const { userId } = await auth();
     
-    if (!authenticatedRequest) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -28,7 +28,7 @@ async function GET(request: NextRequest) {
       endDate: searchParams.get('endDate') || undefined,
       status: searchParams.get('status') as any || 'all',
       search: searchParams.get('search') || undefined,
-      userId: authenticatedRequest.user!.userId // Add user ID for data isolation
+      userId: userId // Add user ID for data isolation
     };
 
     // Validate parameters
@@ -88,9 +88,9 @@ export { GET };
 
 async function POST(request: NextRequest) {
   try {
-    const authenticatedRequest = await authenticateRequest(request);
+    const { userId } = await auth();
     
-    if (!authenticatedRequest) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
@@ -100,7 +100,7 @@ async function POST(request: NextRequest) {
     const body = await request.json();
     
     // Add user ID to the trade data
-    body.userId = authenticatedRequest.user!.userId;
+    body.userId = userId;
     
     console.log('API received trade data:', body);
     
