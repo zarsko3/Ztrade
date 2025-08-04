@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { tradeService } from '@/services/trade-service';
 import { TradeListRequest } from '@/types/trade';
-import { emitTradeUpdate, createTradeUpdate } from '@/lib/websocket-utils';
+// import { emitTradeUpdate, createTradeUpdate } from '@/lib/websocket-utils';
 import { auth } from '@clerk/nextjs/server';
 
 async function GET(request: NextRequest) {
@@ -67,8 +67,15 @@ async function GET(request: NextRequest) {
       );
     }
 
+    console.log('Calling trade service with request:', tradeRequest);
+
     // Get trades from service
     const result = await tradeService.getTrades(tradeRequest);
+
+    console.log('Trade service returned:', {
+      tradesCount: result.trades.length,
+      pagination: result.pagination
+    });
 
     return NextResponse.json(result);
   } catch (error) {
@@ -156,7 +163,7 @@ async function POST(request: NextRequest) {
     const trade = await tradeService.createTrade(body);
 
     // Emit WebSocket update
-    emitTradeUpdate(createTradeUpdate(trade.id.toString(), 'created', trade));
+    // emitTradeUpdate(createTradeUpdate(trade.id.toString(), 'created', trade));
 
     return NextResponse.json(
       { 
