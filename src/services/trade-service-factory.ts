@@ -16,15 +16,16 @@ export interface ITradeService {
 
 // Factory function to get the appropriate service
 export function getTradeService(): ITradeService {
-  // Check if we're in production (using Supabase) or development (using Prisma)
+  // Always use Supabase in production, Prisma in development
   const isProduction = process.env.NODE_ENV === 'production';
-  const useSupabase = process.env.USE_SUPABASE === 'true' || isProduction;
   
-  console.log(`Trade Service Factory: Using ${useSupabase ? 'Supabase' : 'Prisma'} service`);
+  console.log(`Trade Service Factory: Environment=${process.env.NODE_ENV}, Using ${isProduction ? 'Supabase' : 'Prisma'} service`);
   
-  if (useSupabase) {
+  if (isProduction) {
+    console.log('Production detected - using SupabaseService');
     return SupabaseService.getInstance();
   } else {
+    console.log('Development detected - using TradeService (Prisma)');
     return new TradeService();
   }
 }
