@@ -85,6 +85,8 @@ export class SupabaseService {
         userId
       } = request;
 
+      console.log('SupabaseService getTrades called with:', { userId, page, limit, sortBy, sortOrder });
+
       let query = supabaseAdmin
         .from(TABLES.TRADES)
         .select('*', { count: 'exact' })
@@ -92,8 +94,10 @@ export class SupabaseService {
       // Apply user filter for data isolation (CRITICAL for security)
       if (userId) {
         query = query.eq('user_id', userId)
+        console.log('Applied user filter for userId:', userId);
       } else {
         // If no userId provided, return empty result for security
+        console.log('No userId provided, returning empty result for security');
         return { 
           trades: [], 
           pagination: {
@@ -134,19 +138,25 @@ export class SupabaseService {
       const offset = (page - 1) * limit
       query = query.range(offset, offset + limit - 1)
 
-      // Apply sorting
-      const sortColumn = sortBy === 'entryDate' ? 'entry_date' : 
-                        sortBy === 'ticker' ? 'ticker' : 
-                        sortBy === 'createdAt' ? 'created_at' : 'entry_date';
+      // Apply sorting - simplified to avoid column mapping issues
+      let sortColumn = 'entry_date'; // Default
+      if (sortBy === 'ticker') {
+        sortColumn = 'ticker';
+      } else if (sortBy === 'createdAt') {
+        sortColumn = 'created_at';
+      }
+      
       query = query.order(sortColumn, { ascending: sortOrder === 'asc' })
 
+      console.log('Executing Supabase query...');
       const { data, error, count } = await query
 
       if (error) {
         console.error('Error fetching trades:', error)
-        throw new Error('Failed to fetch trades')
+        throw new Error(`Failed to fetch trades: ${error.message}`)
       }
 
+      console.log('Query successful, processing results...');
       const trades = data?.map(trade => this.mapDatabaseTradeToTrade(trade)) || []
       const total = count || 0;
       
@@ -154,6 +164,8 @@ export class SupabaseService {
       const totalPages = Math.ceil(total / limit);
       const hasNext = page < totalPages;
       const hasPrev = page > 1;
+
+      console.log('Returning trades:', { count: trades.length, total, totalPages });
 
       return { 
         trades, 
