@@ -8,6 +8,7 @@ const supabaseServiceKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXB
 export const supabase = createClient(supabaseUrl, supabaseAnonKey)
 
 // Create Supabase client for server-side operations (with service role key)
+// This bypasses RLS and allows us to implement our own user-based filtering
 export const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey)
 
 // Database table names

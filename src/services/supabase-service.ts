@@ -1,4 +1,4 @@
-import { supabase, TABLES, DatabaseTrade } from '@/lib/supabase'
+import { supabaseAdmin, TABLES, DatabaseTrade } from '@/lib/supabase'
 import { TradeWithCalculations, CreateTradeRequest, UpdateTradeRequest, Position, AddToPositionRequest } from '@/types/trade'
 
 export class SupabaseService {
@@ -85,13 +85,26 @@ export class SupabaseService {
         userId
       } = request;
 
-      let query = supabase
+      let query = supabaseAdmin
         .from(TABLES.TRADES)
         .select('*', { count: 'exact' })
 
-      // Apply user filter for data isolation
+      // Apply user filter for data isolation (CRITICAL for security)
       if (userId) {
         query = query.eq('user_id', userId)
+      } else {
+        // If no userId provided, return empty result for security
+        return { 
+          trades: [], 
+          pagination: {
+            page: 1,
+            limit,
+            total: 0,
+            totalPages: 0,
+            hasNext: false,
+            hasPrev: false
+          }
+        }
       }
 
       // Apply filters
@@ -162,7 +175,7 @@ export class SupabaseService {
   // Get a single trade by ID
   async getTradeById(id: string): Promise<TradeWithCalculations | null> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .select('*')
         .eq('id', id)
@@ -185,7 +198,7 @@ export class SupabaseService {
     try {
       const dbTrade = this.mapTradeToDatabaseTrade(tradeData)
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .insert([dbTrade])
         .select()
@@ -208,7 +221,7 @@ export class SupabaseService {
     try {
       const dbTrade = this.mapTradeToDatabaseTrade(tradeData)
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .update(dbTrade)
         .eq('id', id)
@@ -230,7 +243,7 @@ export class SupabaseService {
   // Delete a trade
   async deleteTrade(id: string): Promise<boolean> {
     try {
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .delete()
         .eq('id', id)
@@ -250,7 +263,7 @@ export class SupabaseService {
   // Get positions (grouped trades by ticker)
   async getPositions(): Promise<Position[]> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .select('*')
         .is('exit_date', null)
@@ -317,7 +330,7 @@ export class SupabaseService {
         isShort: request.isShort
       })
 
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .insert([dbTrade])
         .select()
@@ -338,7 +351,7 @@ export class SupabaseService {
   // Get current position for a ticker
   async getPosition(ticker: string, userId: string): Promise<any> {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .select('*')
         .eq('ticker', ticker.toUpperCase())
@@ -376,7 +389,7 @@ export class SupabaseService {
   // Check if user has an open position for a ticker
   async hasOpenPosition(ticker: string, userId: string): Promise<boolean> {
     try {
-      const { count, error } = await supabase
+      const { count, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .select('*', { count: 'exact', head: true })
         .eq('ticker', ticker.toUpperCase())
@@ -399,7 +412,7 @@ export class SupabaseService {
   async getTradeStats(userId: string): Promise<any> {
     try {
       // Get all trades for the user
-      const { data, error } = await supabase
+      const { data, error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .select('*')
         .eq('user_id', userId)
@@ -458,7 +471,7 @@ export class SupabaseService {
       console.log('Initializing Supabase database...')
       
       // Check if tables exist by trying to query them
-      const { error: tradesError } = await supabase
+      const { error: tradesError } = await supabaseAdmin
         .from(TABLES.TRADES)
         .select('id')
         .limit(1)
@@ -517,7 +530,7 @@ export class SupabaseService {
       console.log('Seeding Supabase database with sample data...')
       
       // Check if we already have data
-      const { count } = await supabase
+      const { count } = await supabaseAdmin
         .from(TABLES.TRADES)
         .select('*', { count: 'exact', head: true })
 
@@ -650,7 +663,7 @@ export class SupabaseService {
         }
       ]
 
-      const { error } = await supabase
+      const { error } = await supabaseAdmin
         .from(TABLES.TRADES)
         .insert(sampleTrades)
 
