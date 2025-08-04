@@ -23,10 +23,32 @@ export function getTradeService(): ITradeService {
   
   if (isProduction) {
     console.log('Production detected - using SupabaseService');
-    return SupabaseService.getInstance();
+    try {
+      const service = SupabaseService.getInstance();
+      console.log('SupabaseService created successfully:', {
+        constructor: service.constructor.name,
+        hasGetTrades: typeof service.getTrades === 'function',
+        hasGetTradeById: typeof service.getTradeById === 'function'
+      });
+      return service;
+    } catch (error) {
+      console.error('Error creating SupabaseService:', error);
+      throw error;
+    }
   } else {
     console.log('Development detected - using TradeService (Prisma)');
-    return new TradeService();
+    try {
+      const service = new TradeService();
+      console.log('TradeService created successfully:', {
+        constructor: service.constructor.name,
+        hasGetTrades: typeof service.getTrades === 'function',
+        hasGetTradeById: typeof service.getTradeById === 'function'
+      });
+      return service;
+    } catch (error) {
+      console.error('Error creating TradeService:', error);
+      throw error;
+    }
   }
 }
 
