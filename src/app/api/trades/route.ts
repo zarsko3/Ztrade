@@ -6,23 +6,15 @@ import { auth } from '@clerk/nextjs/server';
 
 async function GET(request: NextRequest) {
   try {
-    console.log('GET /api/trades called');
-    
-    // Step 1: Authentication
-    console.log('Step 1: Authenticating...');
     const { userId } = await auth();
-    console.log('Auth result - userId:', userId ? 'PRESENT' : 'MISSING');
     
     if (!userId) {
-      console.log('Authentication failed - no userId');
       return NextResponse.json(
         { error: 'Authentication required' },
         { status: 401 }
       );
     }
 
-    // Step 2: Parse request
-    console.log('Step 2: Parsing request...');
     const { searchParams } = new URL(request.url);
 
     // Parse query parameters
@@ -39,10 +31,7 @@ async function GET(request: NextRequest) {
       userId: userId // Add user ID for data isolation
     };
 
-    console.log('Trade request:', tradeRequest);
-
-    // Step 3: Validate parameters
-    console.log('Step 3: Validating parameters...');
+    // Validate parameters
     if (tradeRequest.page && tradeRequest.page < 1) {
       return NextResponse.json(
         { error: 'Page must be greater than 0' },
@@ -78,39 +67,16 @@ async function GET(request: NextRequest) {
       );
     }
 
-    // Step 4: Get service
-    console.log('Step 4: Getting trade service...');
-    console.log('Service type:', tradeService.constructor.name);
-    console.log('Environment:', process.env.NODE_ENV);
-
-    // Step 5: Call service
-    console.log('Step 5: Calling trade service...');
     const result = await tradeService.getTrades(tradeRequest);
-
-    console.log('Trade service returned:', {
-      tradesCount: result.trades.length,
-      pagination: result.pagination
-    });
 
     return NextResponse.json(result);
   } catch (error) {
     console.error('Error in GET /api/trades:', error);
     
-    // More detailed error information
-    const errorDetails = {
-      message: error instanceof Error ? error.message : 'Unknown error',
-      name: error instanceof Error ? error.name : 'Unknown',
-      stack: error instanceof Error ? error.stack : undefined,
-      timestamp: new Date().toISOString(),
-      environment: process.env.NODE_ENV
-    };
-    
-    console.error('Detailed error info:', errorDetails);
-    
     return NextResponse.json(
       { 
         error: 'Failed to retrieve trades',
-        details: errorDetails
+        details: error instanceof Error ? error.message : 'Unknown error'
       },
       { status: 500 }
     );
