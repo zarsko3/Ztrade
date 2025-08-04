@@ -2,6 +2,7 @@
 
 import { useUser } from '@clerk/nextjs';
 import { Sidebar } from './Sidebar';
+import { Header } from './Header';
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
@@ -35,9 +36,10 @@ export function LayoutWrapper({ children }: LayoutWrapperProps) {
     );
   }
 
-  // For unauthenticated users, show full-width content
+  // For unauthenticated users, show header and full-width content
   return (
     <div className="min-h-screen">
+      <Header />
       {children}
     </div>
   );

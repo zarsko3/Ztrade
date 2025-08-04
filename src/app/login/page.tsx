@@ -45,7 +45,7 @@ export default function LoginPage() {
         <div className="mt-8 space-y-6">
           <div className="text-center">
             <p className="text-gray-600 dark:text-gray-400 mb-4">
-              Authentication is now handled by Clerk. Please use the sign-in button in the header.
+              Use the sign-in button in the header above to access your account.
             </p>
             <Link 
               href="/" 
