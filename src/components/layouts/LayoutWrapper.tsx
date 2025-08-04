@@ -1,6 +1,6 @@
 'use client';
 
-import { useAuth } from '@/lib/auth-context';
+import { useUser } from '@clerk/nextjs';
 import { Sidebar } from './Sidebar';
 
 interface LayoutWrapperProps {
@@ -8,10 +8,10 @@ interface LayoutWrapperProps {
 }
 
 export function LayoutWrapper({ children }: LayoutWrapperProps) {
-  const { user, loading } = useAuth();
+  const { user, isLoaded } = useUser();
 
   // Show loading state
-  if (loading) {
+  if (!isLoaded) {
     return (
       <div className="flex h-screen">
         <div className="flex-1 flex items-center justify-center">

@@ -25,7 +25,7 @@ import { useState } from 'react';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import { TradeLogo } from '@/components/ui/TradeLogo';
 import { TradeIcon } from '@/components/ui/TradeIcon';
-import { useAuth } from '@/lib/auth-context';
+import { useUser, useClerk } from '@clerk/nextjs';
 
 const topNavigation = [
   { name: 'Dashboard', href: '/', icon: LayoutDashboard },
@@ -54,10 +54,15 @@ const aiNavigation = [
 
 export function Sidebar() {
   const pathname = usePathname();
-  const { user, logout } = useAuth();
+  const { user } = useUser();
+  const { signOut } = useClerk();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isBasicCollapsed, setIsBasicCollapsed] = useState(false);
   const [isAICollapsed, setIsAICollapsed] = useState(false);
+
+  const handleLogout = () => {
+    signOut();
+  };
 
   return (
     <>
@@ -254,14 +259,14 @@ export function Sidebar() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {user?.name || user?.username || 'Trader'}
+                  {user?.firstName || user?.lastName || user?.username || 'Trader'}
                 </p>
               </div>
             </div>
 
             {/* Logout Button */}
             <button 
-              onClick={logout}
+              onClick={handleLogout}
               className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800 hover:text-gray-900 dark:hover:text-white transition-all duration-200"
             >
               <div className="flex items-center space-x-3">

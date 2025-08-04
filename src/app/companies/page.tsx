@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useAuth } from '@/lib/auth-context';
+import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation';
 import { 
   Building2, 
@@ -98,17 +98,17 @@ const sectors = [
 ];
 
 export default function CompaniesPage() {
-  const { user, loading } = useAuth();
+  const { user, isLoaded } = useUser();
   const router = useRouter();
   const [selectedSector, setSelectedSector] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
 
   // Redirect authenticated users to dashboard
   useEffect(() => {
-    if (!loading && user) {
+    if (isLoaded && user) {
       router.push('/dashboard');
     }
-  }, [user, loading, router]);
+  }, [user, isLoaded, router]);
 
   const filteredCompanies = featuredCompanies.filter(company => {
     const matchesSector = selectedSector === 'all' || company.sector === selectedSector;
@@ -118,7 +118,7 @@ export default function CompaniesPage() {
   });
 
   // Don't render anything while loading or if user is authenticated (will redirect)
-  if (loading || user) {
+  if (!isLoaded || user) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-500"></div>
