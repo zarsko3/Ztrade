@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { AdvancedPerformanceMetrics } from '@/services/ai/performance-analytics';
 import { TradingInsight } from '@/app/api/ai/insights/route';
 
@@ -34,7 +35,7 @@ interface InsightSummary {
   averageConfidence: number;
 }
 
-export default function AIDashboardPage() {
+function AIDashboardPageContent() {
   const [performanceMetrics, setPerformanceMetrics] = useState<AdvancedPerformanceMetrics | null>(null);
   const [behavioralAnalysis, setBehavioralAnalysis] = useState<BehavioralAnalysis | null>(null);
   const [insights, setInsights] = useState<TradingInsight[]>([]);
@@ -55,27 +56,53 @@ export default function AIDashboardPage() {
       setLoading(true);
       setError(null);
 
+      console.log('Fetching AI dashboard data...');
+
       // Fetch advanced performance metrics
       const performanceResponse = await fetch(`/api/ai/performance/advanced?period=${filters.period}&includeInsights=${filters.includeInsights}`);
+      console.log('Performance response status:', performanceResponse.status);
+      
+      if (!performanceResponse.ok) {
+        throw new Error(`Performance API failed: ${performanceResponse.status} ${performanceResponse.statusText}`);
+      }
+      
       const performanceData = await performanceResponse.json();
+      console.log('Performance data:', performanceData);
 
       // Fetch behavioral analysis
       const behavioralResponse = await fetch(`/api/ai/performance/behavioral?period=${filters.period}`);
+      console.log('Behavioral response status:', behavioralResponse.status);
+      
+      if (!behavioralResponse.ok) {
+        throw new Error(`Behavioral API failed: ${behavioralResponse.status} ${behavioralResponse.statusText}`);
+      }
+      
       const behavioralData = await behavioralResponse.json();
+      console.log('Behavioral data:', behavioralData);
 
       // Fetch AI insights
       const insightsResponse = await fetch(`/api/ai/insights?period=${filters.period}&limit=10`);
+      console.log('Insights response status:', insightsResponse.status);
+      
+      if (!insightsResponse.ok) {
+        throw new Error(`Insights API failed: ${insightsResponse.status} ${insightsResponse.statusText}`);
+      }
+      
       const insightsData = await insightsResponse.json();
+      console.log('Insights data:', insightsData);
 
       if (performanceData.status === 'success' && behavioralData.status === 'success' && insightsData.status === 'success') {
         setPerformanceMetrics(performanceData.data.metrics);
         setBehavioralAnalysis(behavioralData.data.behavioralAnalysis);
         setInsights(insightsData.data.insights);
         setInsightSummary(insightsData.data.summary);
+        console.log('AI dashboard data loaded successfully');
       } else {
-        throw new Error('Failed to fetch AI data');
+        console.error('API responses:', { performanceData, behavioralData, insightsData });
+        throw new Error('One or more API responses did not return success status');
       }
     } catch (err) {
+      console.error('Error fetching AI dashboard data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch AI data');
     } finally {
       setLoading(false);
@@ -449,4 +476,12 @@ export default function AIDashboardPage() {
       )}
     </div>
   );
-} 
+}
+
+export default function AIDashboardPage() {
+  return (
+    <ProtectedRoute>
+      <AIDashboardPageContent />
+    </ProtectedRoute>
+  );
+}

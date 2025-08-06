@@ -3,8 +3,6 @@ import "./globals.css";
 import { Sidebar } from "@/components/layouts/Sidebar";
 import { NotificationProvider } from "@/components/NotificationSystem";
 import { ThemeProvider } from "@/lib/theme-context";
-import { StagewiseToolbar } from "@stagewise/toolbar-next";
-import ReactPlugin from "@stagewise-plugins/react";
 import { LayoutWrapper } from "@/components/layouts/LayoutWrapper";
 import {
   ClerkProvider,
@@ -37,11 +35,6 @@ export default function RootLayout({
               <LayoutWrapper>
                 {children}
               </LayoutWrapper>
-              <StagewiseToolbar
-                config={{
-                  plugins: [ReactPlugin],
-                }}
-              />
             </NotificationProvider>
           </ThemeProvider>
         </body>

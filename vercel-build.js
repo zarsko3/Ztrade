@@ -16,8 +16,6 @@ const packageJson = {
   },
   "dependencies": {
     "@prisma/client": "^6.12.0",
-    "@stagewise-plugins/react": "^0.6.2",
-    "@stagewise/toolbar-next": "^0.6.2",
     "@tensorflow/tfjs": "^4.22.0",
     "axios": "^1.10.0",
     "date-fns": "^4.1.0",

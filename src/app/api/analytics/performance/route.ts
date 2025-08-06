@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@/lib/prisma';
 import { SP500Service } from '@/services/sp500-service';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const period = searchParams.get('period') || 'all'; // all, month, quarter, year
     const ticker = searchParams.get('ticker');
@@ -44,7 +53,8 @@ export async function GET(request: NextRequest) {
     const trades = await prisma.trade.findMany({
       where: {
         ...dateFilter,
-        ...tickerFilter
+        ...tickerFilter,
+        userId: userId // Add user ID for data isolation
       },
       orderBy: {
         entryDate: 'desc'

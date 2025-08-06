@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { auth } from '@clerk/nextjs/server';
 import { AdvancedPerformanceAnalytics } from '@/services/ai/performance-analytics';
 import { TradeService } from '@/services/trade-service';
 
@@ -7,6 +8,14 @@ const tradeService = new TradeService();
 
 export async function GET(request: NextRequest) {
   try {
+    // Check authentication
+    const { userId } = await auth();
+    if (!userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized' },
+        { status: 401 }
+      );
+    }
     const { searchParams } = new URL(request.url);
     const ticker = searchParams.get('ticker');
     const period = searchParams.get('period') || 'all';
@@ -20,7 +29,8 @@ export async function GET(request: NextRequest) {
       limit: 1000, // Get all trades for analysis
       sortBy: 'entryDate',
       sortOrder: 'desc',
-      ticker: ticker || undefined
+      ticker: ticker || undefined,
+      userId: userId // Add user ID for data isolation
     });
 
     if (!tradesResponse.trades || tradesResponse.trades.length === 0) {

@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { ProtectedRoute } from '@/components/auth/ProtectedRoute';
 import { 
   TrendingUp, 
   TrendingDown, 
@@ -59,7 +60,7 @@ interface PerformanceData {
   };
 }
 
-export default function AnalyticsPage() {
+function AnalyticsPageContent() {
   const [performanceData, setPerformanceData] = useState<PerformanceData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -73,15 +74,27 @@ export default function AnalyticsPage() {
   const fetchPerformanceData = async () => {
     try {
       setLoading(true);
+      setError(null);
+      
+      console.log('Fetching analytics data...');
+      
       const params = new URLSearchParams();
       if (selectedPeriod !== 'all') params.append('period', selectedPeriod);
       if (selectedTicker !== 'all') params.append('ticker', selectedTicker);
 
       const response = await fetch(`/api/analytics/performance?${params}`);
-      if (!response.ok) throw new Error('Failed to fetch performance data');
+      console.log('Analytics response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`Analytics API failed: ${response.status} ${response.statusText}`);
+      }
+      
       const data = await response.json();
+      console.log('Analytics data:', data);
       setPerformanceData(data);
+      console.log('Analytics data loaded successfully');
     } catch (err) {
+      console.error('Error fetching analytics data:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch performance data');
     } finally {
       setLoading(false);
@@ -462,4 +475,12 @@ export default function AnalyticsPage() {
       )}
     </div>
   );
-} 
+}
+
+export default function AnalyticsPage() {
+  return (
+    <ProtectedRoute>
+      <AnalyticsPageContent />
+    </ProtectedRoute>
+  );
+}

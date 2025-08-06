@@ -4,8 +4,6 @@ import { Sidebar } from "@/components/layouts/Sidebar";
 import { NotificationProvider } from "@/components/NotificationSystem";
 import { ThemeProvider } from "@/lib/theme-context";
 import { AuthProvider } from "@/lib/auth-context";
-import { StagewiseToolbar } from "@stagewise/toolbar-next";
-import ReactPlugin from "@stagewise-plugins/react";
 import { LayoutWrapper } from "@/components/layouts/LayoutWrapper";
 
 export const metadata: Metadata = {
@@ -30,11 +28,6 @@ export default function RootLayout({
               <LayoutWrapper>
                 {children}
               </LayoutWrapper>
-              <StagewiseToolbar
-                config={{
-                  plugins: [ReactPlugin],
-                }}
-              />
             </NotificationProvider>
           </AuthProvider>
         </ThemeProvider>
