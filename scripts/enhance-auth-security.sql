@@ -114,6 +114,7 @@ CREATE OR REPLACE FUNCTION public.user_has_mfa_enrolled()
 RETURNS boolean
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   -- Check if user has verified MFA factors
@@ -135,6 +136,7 @@ RETURNS TABLE(
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public, pg_temp
 AS $$
 BEGIN
   RETURN QUERY
@@ -165,6 +167,7 @@ RETURNS TABLE(
   errors text[]
 )
 LANGUAGE plpgsql
+SET search_path = public, pg_temp
 AS $$
 DECLARE
   error_list text[] := ARRAY[]::text[];
