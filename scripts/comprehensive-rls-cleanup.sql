@@ -230,5 +230,5 @@ SELECT
 FROM pg_policies 
 WHERE schemaname = 'public'
   AND tablename IN ('trades', 'performance', 'users', 'User')
-  AND roles LIKE '%anon%'
+  AND 'anon' = ANY(roles)
 ORDER BY tablename, policyname;
