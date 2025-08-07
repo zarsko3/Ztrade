@@ -1,5 +1,7 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   /* Light Theme Colors */
@@ -42,17 +44,7 @@
   --gray-light: #1E293B;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card-background: var(--card-background);
-  --color-card-border: var(--card-border);
-  --color-green-primary: var(--green-primary);
-  --color-red-primary: var(--red-primary);
-  --color-blue-primary: var(--blue-primary);
-  --color-gray-primary: var(--gray-primary);
-  --font-sans: var(--font-sans);
-}
+/* Custom CSS Variables for theming */
 
 /* Base Styles */
 * {
