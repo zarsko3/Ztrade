@@ -58,7 +58,10 @@ BEGIN
   IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'trades') THEN
     
     -- Create MFA-required policy for sensitive operations
-    CREATE POLICY IF NOT EXISTS "trades_mfa_required"
+    -- Drop existing policy first to avoid conflicts
+    DROP POLICY IF EXISTS "trades_mfa_required" ON public.trades;
+    
+    CREATE POLICY "trades_mfa_required"
       ON public.trades
       FOR ALL
       TO authenticated
@@ -81,7 +84,10 @@ DO $$
 BEGIN
   IF EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = 'performance') THEN
     
-    CREATE POLICY IF NOT EXISTS "performance_mfa_required"
+    -- Drop existing policy first to avoid conflicts
+    DROP POLICY IF EXISTS "performance_mfa_required" ON public.performance;
+    
+    CREATE POLICY "performance_mfa_required"
       ON public.performance
       FOR ALL
       TO authenticated
